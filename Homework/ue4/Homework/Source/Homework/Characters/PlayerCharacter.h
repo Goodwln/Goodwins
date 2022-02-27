@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "BaseCharacter.h"
+#include "Components/TimelineComponent.h"
 #include "PlayerCharacter.generated.h"
 
 USTRUCT()
@@ -21,24 +22,41 @@ class HOMEWORK_API APlayerCharacter : public ABaseCharacter
 
 public:
 	APlayerCharacter(const FObjectInitializer& ObjectInitializer);
+	void TimelineFOVInitialize();
 
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void MoveForward(float Value) override;
 	virtual void MoveRight(float Value) override;
 	virtual void Turn(float Value) override;
 	virtual void LookUp(float Value) override;
-
+	
 	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 
+	virtual void StartProne(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	virtual void EndProne(float HeightAdjust, float ScaledHeightAdjust) override;
+
+	virtual void WallRun(float Value) override;
+	
+	virtual void SwimForward(float Value);
+	virtual void SwimRight(float Value);
+	virtual void SwimUp(float Value);
+	
 	virtual bool CanJumpInternal_Implementation() const override;
 	virtual void OnJumped_Implementation() override;
+
+	UFUNCTION()
+	void ChangeFOV(float Value);
 
 	FORCEINLINE float GetIKRightFootOffset() { return IKRightFootOffset; }
 	FORCEINLINE float GetIKLeftFootOffset() { return IKLeftFootOffset; }
 	
 	FORCEINLINE float GetIKHipOffset() { return IKHipOffset; }
+
+	virtual void OnStartAimingInternal() override;
+	virtual void OnStopAimingInternal() override;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
@@ -71,7 +89,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character|IK")
 	FRotator IKRotationBoxCollision;
 private:
-
+	FTimeline FOVTimeline;
+	float FOVValue = 0.f;
+	
 	FIKHitTrace GetIKOffsetForASocket(FName SocketName);
 
 	FIKHitTrace LeftSocket;
@@ -87,5 +107,6 @@ private:
 
 	bool bIKHipOffset = false;
 
-	bool bIsProne = false;
+	bool bIsWeapon = true;
 };
+

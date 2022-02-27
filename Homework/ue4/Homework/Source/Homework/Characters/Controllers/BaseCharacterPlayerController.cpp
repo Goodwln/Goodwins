@@ -3,11 +3,18 @@
 
 #include "BaseCharacterPlayerController.h"
 #include "../BaseCharacter.h"
+#include "Components/CharacterComponents/CharacterAttributeComponent.h"
+#include "UI/Widget/PlayerHUDWidget.h"
+#include "UI/Widget/ReticleWidget.h"
+#include "UI/Widget/AmmoWidget.h"
+#include "UI/Widget/WidgetCharacterAttributes.h"
+#include "Components/CharacterComponents/CharacterEquipmentComponent.h"
 
 void ABaseCharacterPlayerController::SetPawn(APawn* InPawn)
 {
 	Super::SetPawn(InPawn);
 	CachedBaseCharacter = Cast<ABaseCharacter>(InPawn);
+	CreateAndInitializeWidget();
 }
 
 void ABaseCharacterPlayerController::SetupInputComponent()
@@ -15,14 +22,49 @@ void ABaseCharacterPlayerController::SetupInputComponent()
 	Super::SetupInputComponent();
 	InputComponent->BindAxis("MoveForward", this, &ABaseCharacterPlayerController::MoveForward);
 	InputComponent->BindAxis("MoveRight", this, &ABaseCharacterPlayerController::MoveRight);
+	
 	InputComponent->BindAxis("Turn", this, &ABaseCharacterPlayerController::Turn);
 	InputComponent->BindAxis("LookUp", this, &ABaseCharacterPlayerController::LookUp);
-	InputComponent->BindAction("Jump", EInputEvent::IE_DoubleClick, this, &ABaseCharacterPlayerController::Jump);
+
+	InputComponent->BindAxis("SwimForward", this, &ABaseCharacterPlayerController::SwimForward);
+	InputComponent->BindAxis("SwimRight", this, &ABaseCharacterPlayerController::SwimRight);
+	InputComponent->BindAxis("SwimUp", this, &ABaseCharacterPlayerController::SwimUp);
+
+	InputComponent->BindAxis("WallRun", this, &ABaseCharacterPlayerController::WallRun);
+
+	InputComponent->BindAxis("ClimbLadderUp", this, &ABaseCharacterPlayerController::ClimbLadderUp);
+	InputComponent->BindAction("InteractWithLadder", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::InteractWithLadder);
+
+	InputComponent->BindAction("InteractWithZipline", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::InteractWithZipline);
+
+	InputComponent->BindAction("Mantle", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::Mantle);
+
+	InputComponent->BindAction("Jump", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::Jump);
+
+	InputComponent->BindAction("Slide", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::StartSlide);
+	InputComponent->BindAction("Slide", EInputEvent::IE_Released, this, &ABaseCharacterPlayerController::StopSlide);
+	
 	InputComponent->BindAction("Crouch", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::ChangeCrouchState);
+	
+	InputComponent->BindAction("ClassicProne", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::ChangeProneState);
+	
 	InputComponent->BindAction("Sprint", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::StartSprint);
 	InputComponent->BindAction("Sprint", EInputEvent::IE_Released, this, &ABaseCharacterPlayerController::StopSprint);
-	InputComponent->BindAction("Prone", EInputEvent::IE_Released, this, &ABaseCharacterPlayerController::StartProne);
+	
+	InputComponent->BindAction("Fire", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::FireStart);
+	InputComponent->BindAction("Fire", EInputEvent::IE_Released, this, &ABaseCharacterPlayerController::FireStop);
 
+	InputComponent->BindAction("Aim", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::StartAiming);
+	InputComponent->BindAction("Aim", EInputEvent::IE_Released, this, &ABaseCharacterPlayerController::StopAiming);
+
+	InputComponent->BindAction("Reload", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::Reload);
+
+	InputComponent->BindAction("NextItem", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::NextItem);
+	InputComponent->BindAction("PreviousItem", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::PreviousItem);
+	
+	InputComponent->BindAction("EquipPrimaryItem", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::EquipPrimaryItem);
+
+	InputComponent->BindAction("SecondaryFire", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::SecondaryFire);
 }
 
 void ABaseCharacterPlayerController::MoveForward(float val)
@@ -65,11 +107,43 @@ void ABaseCharacterPlayerController::ChangeCrouchState()
 	}
 }
 
+void ABaseCharacterPlayerController::Mantle()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->Mantle();
+	}
+}
+
 void ABaseCharacterPlayerController::Jump()
 {
 	if (CachedBaseCharacter.IsValid())
 	{
 		CachedBaseCharacter->Jump();
+	}
+}
+
+void ABaseCharacterPlayerController::ClimbLadderUp(float Value)
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->ClimbLadderUp(Value);
+	}
+}
+
+void ABaseCharacterPlayerController::InteractWithLadder()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->InteractWithLadder();
+	}
+}
+
+void ABaseCharacterPlayerController::InteractWithZipline()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->InteractWithZipline();
 	}
 }
 
@@ -89,10 +163,145 @@ void ABaseCharacterPlayerController::StopSprint()
 	}
 }
 
-void ABaseCharacterPlayerController::StartProne()
+void ABaseCharacterPlayerController::SwimForward(float Value)
 {
-	if (CachedBaseCharacter->IsValidLowLevel())
+	if (CachedBaseCharacter.IsValid())
 	{
-		CachedBaseCharacter->StartProne();
+		CachedBaseCharacter->SwimForward(Value);
 	}
 }
+
+void ABaseCharacterPlayerController::SwimRight(float Value)
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->SwimRight(Value);
+	}
+}
+
+void ABaseCharacterPlayerController::SwimUp(float Value)
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->SwimUp(Value);
+	}
+}
+
+void ABaseCharacterPlayerController::WallRun(float Value)
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->WallRun(Value);
+	}
+}
+
+void ABaseCharacterPlayerController::StartSlide()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->StartSlide();
+	}
+}
+
+void ABaseCharacterPlayerController::StopSlide()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->StopSlide();
+	}
+}
+
+void ABaseCharacterPlayerController::ChangeProneState()
+{
+	if (CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->ChangeProneState();
+	}
+}
+
+void ABaseCharacterPlayerController::FireStart()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->StartFire();	
+	}
+}
+
+void ABaseCharacterPlayerController::FireStop()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->StopFire();	
+	}
+}
+
+void ABaseCharacterPlayerController::StartAiming()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->StartAiming();
+	}
+}
+
+void ABaseCharacterPlayerController::StopAiming()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->StopAiming();
+	}
+}
+
+void ABaseCharacterPlayerController::Reload()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->Reload();
+	}
+}
+
+void ABaseCharacterPlayerController::NextItem()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->NextItem();
+	}
+}
+
+void ABaseCharacterPlayerController::PreviousItem()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->PreviousItem();
+	}
+}
+
+void ABaseCharacterPlayerController::EquipPrimaryItem()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->EquipPrimaryItem();
+	}
+}
+
+void ABaseCharacterPlayerController::SecondaryFire()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->SecondaryFire();
+	}
+}
+
+void ABaseCharacterPlayerController::CreateAndInitializeWidget()
+{
+	if(!IsValid(PlayerHUDWidget))
+	{
+		PlayerHUDWidget = CreateWidget<UPlayerHUDWidget>(GetWorld(), PlayerHudWidgetClass);
+
+		if(IsValid(PlayerHUDWidget))
+		{
+			PlayerHUDWidget->AddToViewport();
+			PlayerHUDWidget->CreateAndInitializeWidget(CachedBaseCharacter.Get());
+		}
+	}
+}
+   

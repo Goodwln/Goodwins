@@ -29,4 +29,32 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsSprinting = CharacterMovement->IsSprinting();
 	bIsOutStamina = CharacterMovement->GetIsOutOfStamina();
 	bIsProne = CharacterMovement->IsProne();
-}
+	bIsLadder = CharacterMovement->IsOnLadder();
+	bIsSwimming = CharacterMovement->IsSwimming();
+	bIsZipLine = CharacterMovement->IsOnZipline();
+	bIsWallRun = CharacterMovement->IsOnWallRun();
+	CurrentSide = CharacterMovement->GetCurrentWallRunSide();
+	bIsSlide = CharacterMovement->IsOnSlide();
+	bIsSuperSlide = CharacterMovement->GetIsSlideBeginningOfTheEnd();
+	
+	Direction = CalculateDirection(CharacterMovement->Velocity, CachedBaseCharacter->GetActorRotation());
+	bIsStrafe = !CharacterMovement->bOrientRotationToMovement;
+
+	const UCharacterEquipmentComponent* CharacterEquipment = CachedBaseCharacter->GetCharacterEquipmentComponent();
+	CurrentEquippedItemType = CharacterEquipment->GetCurrentEquippedItemType();
+	AimRotation = CachedBaseCharacter->GetBaseAimRotation();
+
+	ARangeWeaponItem* CurrentRangeWeaponItem = CharacterEquipment->GetCurrentRangeWeapon();
+	if(IsValid(CurrentRangeWeaponItem))
+	{
+		ForeGripSocketTransform = CurrentRangeWeaponItem->GetForeGripTransform();
+	}
+	
+	if (bIsLadder)
+	{
+		LadderSpeedRatio = CharacterMovement->GetLadderSpeedRatio();
+	}
+
+	bIsAiming = CachedBaseCharacter->GetIsAiming();
+	
+} 
