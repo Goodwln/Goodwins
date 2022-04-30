@@ -2,27 +2,30 @@
 
 
 #include "BaseCharacter.h"
+
+#include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "BaseCharacterMovementComponent.h"
+#include "Actors/Environment/PlatformTrigger.h"
 #include "Actors/Interactive/InteractiveActor.h"
 #include "Actors/Interactive/Enviroment/Ladder.h"
 #include "Actors/Interactive/Enviroment/Zipline.h"
 #include "Components/CharacterComponents/CharacterAttributeComponent.h"
 #include "Components/CharacterComponents/CharacterEquipmentComponent.h"
 #include "Components/DetectorComponents/LedgeDetectorComponent.h"
+#include "Components/Weapon/WeaponBarellComponent.h"
 #include "Curves/CurveVector.h"
 #include "GameFramework/PhysicsVolume.h"
 #include "Homework/HomeworkTypes.h"
 #include "Homework/Components/DetectorComponents/FloorDetectorComponent.h"
 #include "Homework/Components/DetectorComponents/WallDetectorComponent.h"
+ 
 
 
 ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer.SetDefaultSubobjectClass<UBaseCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {	
 	BaseCharacterMovementComponent = StaticCast<UBaseCharacterMovementComponent*>(GetCharacterMovement());
-	
-	CharacterAttributeComponent = CreateDefaultSubobject<UCharacterAttributeComponent>(TEXT("CharacterAttributes"));
 
 	LedgeDetectorComponent = CreateDefaultSubobject<ULedgeDetectorComponent>(TEXT("LedgeDetector"));
 
@@ -31,6 +34,8 @@ ABaseCharacter::ABaseCharacter(const FObjectInitializer& ObjectInitializer)
 	FloorDetectorComponent = CreateDefaultSubobject<UFloorDetectorComponent>(TEXT("FloorDetector"));
 
 	CharacterEquipmentComponent = CreateDefaultSubobject<UCharacterEquipmentComponent>(TEXT("CharacterEquipment"));
+	
+	CharacterAttributeComponent = CreateDefaultSubobject<UCharacterAttributeComponent>(TEXT("CharacterAttributes"));
 
 	
 }
@@ -221,6 +226,7 @@ void ABaseCharacter::BeginPlay()
 	CharacterAttributeComponent->OnChangeStaminaEvent.AddUObject(this, &ABaseCharacter::OnChangeStamina);
 	CharacterAttributeComponent->OnChangeOxygenEvent.AddUObject(this, &ABaseCharacter::OnChangeOxygen);
 	CharacterAttributeComponent->OnChangeHealthEvent.AddUObject(this, &ABaseCharacter::OnChangeHealth);
+ 
 }	
 
 void ABaseCharacter::Mantle(bool bForce /*=false*/)
@@ -245,6 +251,8 @@ void ABaseCharacter::Mantle(bool bForce /*=false*/)
 			UnCrouch();
 		}
 
+		bIsMantling = true;
+		
 		FMantlingMovementParameters MantlingParametrs;
 
 		MantlingParametrs.InitialLocation = GetActorLocation();
@@ -266,15 +274,53 @@ void ABaseCharacter::Mantle(bool bForce /*=false*/)
 		const FVector2D SourceRange(MantlingSettings.MinHeight, MantlingSettings.MaxHeight);
 		const FVector2D TargetRange(MantlingSettings.MinHeightStartTime, MantlingSettings.MaxHeightStartTime);
 		MantlingParametrs.StartTime = FMath::GetMappedRangeValueClamped(SourceRange, TargetRange, MantlingHeight);
-
+ 
 		MantlingParametrs.InitialAnimationLocation = MantlingParametrs.TargetLocation - MantlingSettings.AnimationCorectionZ * FVector::UpVector + MantlingSettings.AnimationCorectionXY * LedgeDescription.LedgeNormal;
-
-		GetBaseCharacterMovementComponent()->StartMantle(MantlingParametrs);
+		if(GetLocalRole() > ROLE_SimulatedProxy)
+		{
+			GetBaseCharacterMovementComponent()->StartMantle(MantlingParametrs);
+		}
+		
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 		AnimInstance->Montage_Play(MantlingSettings.MantlingMontage, 1.f, EMontagePlayReturnType::Duration, MantlingParametrs.StartTime);
-		
-		
 	}	
+}
+
+void ABaseCharacter::SetPlayerColor(const FLinearColor& LinearColor) 
+{
+	UMaterialInstanceDynamic* MaterialInstance = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
+	if(!IsValid(MaterialInstance))
+	{
+		return;
+	}
+
+	MaterialInstance->SetVectorParameterValue(MaterialColorName, LinearColor);
+}
+
+void ABaseCharacter::OnRep_IsMantling(bool bWasMantling)
+{
+	if(GetLocalRole() == ROLE_SimulatedProxy && (!bWasMantling && bIsMantling))
+	{
+		Mantle(true);
+	}
+}
+
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseCharacter, bIsMantling);
+}
+
+void ABaseCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	AAIController* AIController = Cast<AAIController>(NewController);
+	if(IsValid(AIController))
+	{
+		FGenericTeamId TeamId((uint8)Team);
+		AIController->SetGenericTeamId(TeamId);
+	}
 }
 
 bool ABaseCharacter::CanJumpInternal_Implementation() const
@@ -331,9 +377,14 @@ void ABaseCharacter::RagdollEnable()
 
 void ABaseCharacter::OnDeath()
 {
+	GetCharacterEquipmentComponent_Mutable()->UnEquipCurrentItem();
+	GetCharacterEquipmentComponent_Mutable()->ClearEquip();
 	float Duration = PlayAnimMontage(OnDeathAnimMontage);                
 	GetCharacterMovement()->DisableMovement();
-
+  	GetCapsuleComponent()->SetActive(false);
+	GetCapsuleComponent()->SetSimulatePhysics(false);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	if(Duration == 0)
 	{
 		RagdollEnable();
@@ -354,6 +405,14 @@ void ABaseCharacter::OnStopAimingInternal()
 	{
 		OnAimingStateChanged.Broadcast(false);
 	}
+}
+
+void ABaseCharacter::Reset()
+{
+	GetCharacterEquipmentComponent_Mutable()->UnEquipCurrentItem();
+	GetCharacterEquipmentComponent_Mutable()->ClearEquip();
+	Super::Reset();
+	
 }
 
 void ABaseCharacter::TryChangeSprintState(float DeltaSeconds)
@@ -382,13 +441,11 @@ void ABaseCharacter::PerDamage()
 }
 
 void ABaseCharacter::OnChangeOxygen(float Current, float Max, FDefaultAttributeProperty Attribute)
-{
-	
+{ 
 	if(Current <= 0.f)
 	{
 		GetWorld()->GetTimerManager().SetTimer(TimerPerDamage,this,&ABaseCharacter::PerDamage, 1.f, true);
-	}
-	
+	} 
 }
 
 void ABaseCharacter::OnChangeStamina(float Current, float Max, FDefaultAttributeProperty Attribute)
@@ -408,8 +465,7 @@ void ABaseCharacter::OnChangeStamina(float Current, float Max, FDefaultAttribute
 	if(Current == Max)
 	{
 		GetBaseCharacterMovementComponent()->SetIsOutOfStamina(false);
-	}
-	
+	} 	
 }
 
 void ABaseCharacter::OnChangeHealth(float Current, float Max, FDefaultAttributeProperty Attribute)
@@ -457,6 +513,11 @@ void ABaseCharacter::Landed(const FHitResult& Hit)
 		TakeDamage(DamageAmount, FDamageEvent(), GetController(), Hit.Actor.Get());
 	}
 }
+
+  FGenericTeamId ABaseCharacter::GetGenericTeamId() const
+ {
+	return FGenericTeamId((uint8)Team);
+ }
 
 bool ABaseCharacter::IsAiming()
 {
@@ -560,7 +621,7 @@ const UCharacterEquipmentComponent* ABaseCharacter::GetCharacterEquipmentCompone
 
 void ABaseCharacter::StartFire()
 {
-	if(GetCharacterEquipmentComponent()->IsEquipping() || GetBaseCharacterMovementComponent()->IsMantling() || GetBaseCharacterMovementComponent()->IsSprinting() || GetBaseCharacterMovementComponent()->IsOnLadder() || GetBaseCharacterMovementComponent()->IsOnSlide() || GetBaseCharacterMovementComponent()->IsOnZipline())
+	if(GetCharacterEquipmentComponent()->IsEquipping() || GetBaseCharacterMovementComponent()->IsMantling() || GetBaseCharacterMovementComponent()->IsSprinting() || GetBaseCharacterMovementComponent()->IsOnLadder() || GetBaseCharacterMovementComponent()->IsOnSlide() || GetBaseCharacterMovementComponent()->IsOnZipline() || !GetCharacterAttributeComponent()->IsAlive())
 	{
 		return;
 	}
@@ -613,6 +674,14 @@ void ABaseCharacter::StopAiming()
 	OnStopAiming();
 }
 
+FRotator ABaseCharacter::GetAimOffset()
+{
+	FVector AimDirectionWorld = GetBaseAimRotation().Vector();
+	FVector AimDirectionLocal = GetTransform().InverseTransformVectorNoScale(AimDirectionWorld);
+	FRotator Result = AimDirectionLocal.ToOrientationRotator();
+	return Result;
+}
+
 void ABaseCharacter::OnStartAiming_Implementation()
 {
 	OnStartAimingInternal();
@@ -630,6 +699,11 @@ bool ABaseCharacter::GetIsAiming() const
 
 void ABaseCharacter::Reload()
 {
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
+	
 	if(IsValid(GetCharacterEquipmentComponent()->GetCurrentRangeWeapon()))
 	{
 		GetCharacterEquipmentComponent_Mutable()->ReloadCurrentWeapon();
@@ -639,16 +713,29 @@ void ABaseCharacter::Reload()
 
 void ABaseCharacter::NextItem()
 {
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
 	CharacterEquipmentComponent->EquipNextItem();
 }
 
 void ABaseCharacter::PreviousItem()
 {
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
 	CharacterEquipmentComponent->EquipPreviousItem();
 }
 
 void ABaseCharacter::EquipPrimaryItem()
 {
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
+	
 	if(CharacterEquipmentComponent->IsAvailableThrowable())                 
 	{
 		CharacterEquipmentComponent->EquipItemInSlot(EEquipmentSlot::PrimaryItemSlot);
@@ -657,6 +744,11 @@ void ABaseCharacter::EquipPrimaryItem()
 
 void ABaseCharacter::SecondaryFire()
 {
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
+	
 	if(GetCharacterEquipmentComponent()->IsEquipping() || GetBaseCharacterMovementComponent()->IsMantling() || GetBaseCharacterMovementComponent()->IsSprinting() || GetBaseCharacterMovementComponent()->IsOnLadder() || GetBaseCharacterMovementComponent()->IsOnSlide() || GetBaseCharacterMovementComponent()->IsOnZipline())
 	{
 		return;
@@ -665,9 +757,40 @@ void ABaseCharacter::SecondaryFire()
 	if(IsValid(CharacterEquipmentComponent) && IsValid(CharacterEquipmentComponent->GetCurrentRangeWeapon()))
 	{
 		ARangeWeaponItem* WeaponItem = CharacterEquipmentComponent->GetCurrentRangeWeapon();
-		WeaponItem->SecondaryFire();
+
+		WeaponItem->Server_SecondaryFire();
+		
 	}
 }
+
+void ABaseCharacter::PrimaryMeleeAttack()
+{
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
+	
+	AMeleeWeaponItem* CurrentMeleeWeaponItem = CharacterEquipmentComponent->GetCurrentMeleeWeaponItem();
+	if(IsValid(CurrentMeleeWeaponItem))
+	{
+		CurrentMeleeWeaponItem->StartAttack(EMeleeAttackType::PrimaryAttack);
+	}
+}
+
+void ABaseCharacter::SecondaryMeleeAttack()
+{
+	if(!GetCharacterAttributeComponent()->IsAlive())
+	{
+		return;
+	}
+	
+	AMeleeWeaponItem* CurrentMeleeWeaponItem = CharacterEquipmentComponent->GetCurrentMeleeWeaponItem();
+	if(IsValid(CurrentMeleeWeaponItem))
+	{
+		CurrentMeleeWeaponItem->StartAttack(EMeleeAttackType::SecondaryAttack);
+	}
+}
+ 
 
 void ABaseCharacter::InteractWithLadder()
 {
@@ -713,8 +836,12 @@ UCharacterAttributeComponent* ABaseCharacter::GetCharacterAttributeComponent() c
 	return CharacterAttributeComponent;
 }
 
+ETeams ABaseCharacter::GetTeam() const
+{
+	return Team;
+}
 
-const class ALadder* ABaseCharacter::GetAvailableLadder() const
+const ALadder* ABaseCharacter::GetAvailableLadder() const
 {
 	const ALadder* Result = nullptr;
 	for (const AInteractiveActor* InteractiveActor : AvailableInteractiveActors)

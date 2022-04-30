@@ -7,6 +7,8 @@
 #include "GameFramework/Actor.h"
 #include "EqupableItem.generated.h"
 
+class ABaseCharacter;
+class UAnimMontage;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEquipmentStateChanged, bool, bIsEquipped);
 
 UCLASS(Abstract,NotBlueprintable)
@@ -14,6 +16,10 @@ class HOMEWORK_API AEqupableItem : public AActor
 {
 	GENERATED_BODY()
 public:
+	AEqupableItem();
+	
+	virtual void SetOwner(AActor* NewOwner) override;
+	
 	EEquipableItemType GetItemType() const { return  ItemType; }
 
 	FName GetUnEquippedSocketName() const;
@@ -26,6 +32,7 @@ public:
 	virtual void UnEquip();
 
 	virtual  ECurrentReticle GetCurrentReticle() const;
+
 protected:
 								
 	UPROPERTY(BlueprintAssignable)
@@ -45,5 +52,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reticle")
 	ECurrentReticle CurrentReticle = ECurrentReticle::None;
+
+	ABaseCharacter* GetCharacterOwner() const;
+private:
+	TWeakObjectPtr<ABaseCharacter> CachedBaseCharacter;
 	
 };

@@ -3,18 +3,26 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "GameFramework/PlayerController.h"
 #include "BaseCharacterPlayerController.generated.h"
 
 class UPlayerHUDWidget;
 class ABaseCharacter;
+
+class  URespawnComponent;
+ 
 UCLASS()
 class HOMEWORK_API ABaseCharacterPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	
 public:
-	virtual void SetPawn(APawn* InPawn) override;
+
+	ABaseCharacterPlayerController();
+	
+	virtual void OnPossess(APawn* InPawn) override;
+	URespawnComponent* GetRespawnComponent() const { return RespawnComponent; }
 
 protected:
 
@@ -23,7 +31,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = "Widget")
 	TSubclassOf<UPlayerHUDWidget> PlayerHudWidgetClass;
 	
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	URespawnComponent* RespawnComponent;
 private:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -66,8 +75,10 @@ private:
 	void EquipPrimaryItem();
 
 	void SecondaryFire();
-	
-	TWeakObjectPtr<class ABaseCharacter> CachedBaseCharacter;
+
+	void PrimaryMeleeAttack();
+	void SecondaryMeleeAttack();
+	TWeakObjectPtr< ABaseCharacter> CachedBaseCharacter;
 
 	UPlayerHUDWidget* PlayerHUDWidget;
 

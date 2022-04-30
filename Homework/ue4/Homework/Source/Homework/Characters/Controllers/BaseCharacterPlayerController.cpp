@@ -9,11 +9,21 @@
 #include "UI/Widget/AmmoWidget.h"
 #include "UI/Widget/WidgetCharacterAttributes.h"
 #include "Components/CharacterComponents/CharacterEquipmentComponent.h"
+#include "Components/CharacterComponents/RespawnComponent.h"
 
-void ABaseCharacterPlayerController::SetPawn(APawn* InPawn)
+ABaseCharacterPlayerController::ABaseCharacterPlayerController()
 {
-	Super::SetPawn(InPawn);
+	RespawnComponent = CreateDefaultSubobject<URespawnComponent>(TEXT("RespawnComponent"));
+}
+
+
+
+void ABaseCharacterPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
 	CachedBaseCharacter = Cast<ABaseCharacter>(InPawn);
+
+	OnNewPawn.Broadcast(InPawn);
 	CreateAndInitializeWidget();
 }
 
@@ -65,6 +75,9 @@ void ABaseCharacterPlayerController::SetupInputComponent()
 	InputComponent->BindAction("EquipPrimaryItem", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::EquipPrimaryItem);
 
 	InputComponent->BindAction("SecondaryFire", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::SecondaryFire);
+
+	InputComponent->BindAction("SecondaryMeleeAttack", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::SecondaryMeleeAttack);
+	InputComponent->BindAction("PrimaryMeleeAttack", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::PrimaryMeleeAttack);
 }
 
 void ABaseCharacterPlayerController::MoveForward(float val)
@@ -291,6 +304,22 @@ void ABaseCharacterPlayerController::SecondaryFire()
 	}
 }
 
+void ABaseCharacterPlayerController::PrimaryMeleeAttack()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->PrimaryMeleeAttack();
+	}
+}
+
+void ABaseCharacterPlayerController::SecondaryMeleeAttack()
+{
+	if(CachedBaseCharacter.IsValid())
+	{
+		CachedBaseCharacter->SecondaryMeleeAttack();
+	}
+}
+
 void ABaseCharacterPlayerController::CreateAndInitializeWidget()
 {
 	if(!IsValid(PlayerHUDWidget))
@@ -300,7 +329,8 @@ void ABaseCharacterPlayerController::CreateAndInitializeWidget()
 		if(IsValid(PlayerHUDWidget))
 		{
 			PlayerHUDWidget->AddToViewport();
-			PlayerHUDWidget->CreateAndInitializeWidget(CachedBaseCharacter.Get());
+			PlayerHUDWidget->CreateAndInitializeWidget(CachedBaseCharacter.Get(),this);
+		 
 		}
 	}
 }

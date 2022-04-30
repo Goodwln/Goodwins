@@ -96,7 +96,7 @@ void UBaseCharacterMovementComponent::EndInTimeWallRun()
 {
 	WallRunEnd(EEndingWallRunMethod::Fall);
 }
-
+  
 FCapsuleSize UBaseCharacterMovementComponent::GetCurrentCapsuleSize(const ECurrentCapsuleSize OutCurrentCapsuleSize)
 {
 	CurrentCapsuleSize = OutCurrentCapsuleSize;
@@ -421,6 +421,7 @@ void UBaseCharacterMovementComponent::StartMantle(const FMantlingMovementParamet
 
 void UBaseCharacterMovementComponent::EndMantle()
 {
+	GetBaseCharacterOwner()->bIsMantling = false;
 	SetMovementMode(MOVE_Walking);
 }
 
@@ -510,6 +511,11 @@ const class ALadder* UBaseCharacterMovementComponent::GetCurrentLadder()
 
 void UBaseCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 {
+	if(GetBaseCharacterOwner()->GetLocalRole() == ROLE_SimulatedProxy)
+	{
+		return;
+	}
+	
 	switch (CustomMovementMode)
 	{
 	case (uint8)ECustomMovementMode::CMOVE_Zipline:
@@ -566,16 +572,17 @@ void UBaseCharacterMovementComponent::PhysMantling(float DeltaTime, int32 Iterat
 			CurrentMantlingParametrs.TargetLocation = CurrentMantlingParametrs.SaveLocation + CurrentMantlingParametrs.MantlingOffset;
 		}
 	}
-	MoveUpdateMantling(CorrectedInitialLocation,CurrentMantlingParametrs.TargetLocation, PositionAlpha);
+	MoveUpdateMantling(CorrectedInitialLocation,CurrentMantlingParametrs.TargetLocation, PositionAlpha,DeltaTime);
 }
 
-void UBaseCharacterMovementComponent::MoveUpdateMantling(FVector CorrectedInitialLocation, FVector &TargetUpdateLocation, float PositionAlpha)
+void UBaseCharacterMovementComponent::MoveUpdateMantling(FVector CorrectedInitialLocation, FVector &TargetUpdateLocation, float PositionAlpha, float DeltaTime)
 {
 	const FVector NewLocation = FMath::Lerp(CorrectedInitialLocation, TargetUpdateLocation, PositionAlpha);
 	const FRotator NewRotation = FMath::Lerp(CurrentMantlingParametrs.InitialRotation, CurrentMantlingParametrs.TargetRotation, PositionAlpha);
 
 	const FVector Delta = NewLocation - GetActorLocation();
-
+	Velocity = Delta / DeltaTime;
+	
 	FHitResult Hit;
 	SafeMoveUpdatedComponent(Delta, NewRotation, false, Hit);
 }
@@ -691,7 +698,7 @@ void UBaseCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick 
 void UBaseCharacterMovementComponent::PhysLadder(float deltaTime, int32 Iterations)
 {
 	CalcVelocity(deltaTime, 1.f, false, ClimbingOnLadderBrakingDeceleration);
-	const FVector Delta = Velocity * deltaTime;
+	FVector Delta = Velocity * GetCurrentLadder()->GetActorUpVector() * deltaTime;
 	
 	if(HasAnimRootMotion())
 	{
@@ -893,6 +900,7 @@ void UBaseCharacterMovementComponent::StartSlide(FSlideParameters& OutSlideParam
 {
 	SlideParameters = OutSlideParameters;
 	bIsSliding = true;
+  
 	SetIsSlideBeginningOfTheEnd(false);
 	
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetCapsuleHalfHeight(GetCurrentCapsuleSize(ECurrentCapsuleSize::SlideCapsule).HalfHeight);
@@ -921,6 +929,7 @@ void UBaseCharacterMovementComponent::StopSlide()
 	GetWorld()->GetTimerManager().ClearTimer(SlidingTimer);
 	bIsSliding = false;
 	SetIsSlideBeginningOfTheEnd(false);
+
 	
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetCapsuleHalfHeight(GetCurrentCapsuleSize(ECurrentCapsuleSize::DefaultCapsule).HalfHeight);
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetCapsuleRadius(GetCurrentCapsuleSize(ECurrentCapsuleSize::DefaultCapsule).Radius);
@@ -998,7 +1007,7 @@ void UBaseCharacterMovementComponent::PhysSlide(float deltaTime, int32 Ite1ratio
 	bIsEndSlideChangeOnCrouch = GetBaseCharacterOwner()->GetFloorDetectorComponent()->DetectСeiling();
 	
 	FHitResult Hit;
-	SafeMoveUpdatedComponent(Delta,GetOwner()->GetActorRotation(), true, Hit);
+	SafeMoveUpdatedComponent(Delta, FRotator(0, GetOwner()->GetActorRotation().Yaw, 0), true, Hit);
 
 	SlideAlongSurface(Delta,1.f - Hit.Time, Hit.ImpactNormal, Hit, false);
 }
@@ -1032,3 +1041,5 @@ ABaseCharacter* UBaseCharacterMovementComponent::GetBaseCharacterOwner() const
 {
 	return StaticCast<ABaseCharacter*>(CharacterOwner);
 }
+ 
+ 

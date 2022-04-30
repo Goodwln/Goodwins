@@ -40,10 +40,8 @@ void APlayerCharacter::TimelineFOVInitialize()
 	ARangeWeaponItem* CurrentRangeWeapon = GetCharacterEquipmentComponent()->GetCurrentRangeWeapon();
 	if(IsValid(CurrentRangeWeapon) && bIsWeapon)
 	{
-		
 		if(IsValid(CurrentRangeWeapon->GetFOVCurve()))
 		{
-			
 			FOnTimelineFloat UpdateFunctionTimeline;
 			UpdateFunctionTimeline.BindUFunction(this, TEXT("ChangeFOV"));
 			FOVTimeline.AddInterpFloat(CurrentRangeWeapon->GetFOVCurve(), UpdateFunctionTimeline);
@@ -61,15 +59,11 @@ void APlayerCharacter::BeginPlay()
 		APlayerCameraManager* PlayerCameraManager = PlayerController->PlayerCameraManager;
 		PlayerCameraManager->SetFOV(DefaultFOV);
 	}
-	
-	
-	
 }
 
 void APlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
 	
 	TimelineFOVInitialize();
 	
@@ -120,7 +114,6 @@ void APlayerCharacter::MoveForward(float Value)
 	{
 		return;
 	}
-	
 	
 	if ((GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->IsFalling()) && !FMath::IsNearlyZero(Value, 1e-6f))
 	{	

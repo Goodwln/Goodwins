@@ -5,6 +5,7 @@
 #define ECC_WallRunnable ECC_GameTraceChannel3
 #define ECC_FloorSlide ECC_GameTraceChannel4
 #define ECC_Bullet ECC_GameTraceChannel5
+#define ECC_Melee ECC_GameTraceChannel6
 
 const FName FXParamTraceEnd = FName("TraceEnd");
 
@@ -15,6 +16,7 @@ const FName SocketWeaponForeGrip = FName("ForeGripSocket");
 const FName SocketCharacterThrowable = FName("ThrowableSocket");
 
 const FName CollisionProfilePawn = FName("Pawn");
+const FName CollisionProfileNoCollision = FName("NoCollision");
 const FName CollisionProfilePawnInteractionVolume = FName("PawnInteractionVolume");
 const FName CollisionProfileRagdoll = FName("Ragdoll");
 
@@ -26,6 +28,11 @@ const FName DebugCategoryWallDetection = FName("WallDetection");
 const FName DebugCategoryFloorDetection = FName("FloorDetection");
 const FName DebugCategoryCeilingDetection = FName("CeilingDetection");
 const FName DebugCategoryShotDetection = FName("ShotDetection");
+const FName DebugCategoryMeleeHitDetection = FName("MeleeHitDetection");
+
+const FName BB_CurrentTarget = FName("CurrentTarget");
+const FName BB_NextLocation = FName("NextLocation");
+const FName BB_bIsPatrolling = FName("bIsPatrolling");
 
 UENUM(BlueprintType)
 enum class EEquipableItemType : uint8
@@ -35,7 +42,8 @@ enum class EEquipableItemType : uint8
 	Rifle,
 	Shotgun,
 	Throwable,
-	SniperRifle
+	SniperRifle,
+	MeleeWeapon
 	
 };
 
@@ -48,6 +56,7 @@ enum class EAmunitionType : uint8
 	Shotgun,
 	SniperRifle,
 	RifleGrenade,
+	Grenade,
 	MAX UMETA(Hidden)
 };
 
@@ -60,6 +69,7 @@ enum class EEquipmentSlot : uint8
 	SecondaryWeapon,
 	PrimaryItemSlot,
 	BigGunWeapon,
+	MeleeWeapon,
 	MAX UMETA(Hidden)
 };
 
@@ -89,3 +99,21 @@ enum class EWeaponMode : uint8
 	SecondMode,
 	MAX UMETA(Hidden)
 };
+
+UENUM(BlueprintType)
+enum class EMeleeAttackType : uint8
+{
+	None,
+	PrimaryAttack,
+	SecondaryAttack,
+	MAX UMETA(Hidden)
+};
+
+UENUM(BlueprintType)
+enum class ETeams : uint8
+{
+	None,
+	Player,
+	Enemy
+};
+

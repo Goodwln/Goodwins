@@ -5,6 +5,7 @@
 
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ABaseProjectile::ABaseProjectile()
@@ -17,18 +18,33 @@ ABaseProjectile::ABaseProjectile()
 
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComponent"));
 	ProjectileMovementComponent->InitialSpeed = 2000.f;
-	
+	ProjectileMovementComponent->bAutoActivate = false;
+ 
 }
+
+ 
 
 void ABaseProjectile::LaunchProjectile(FVector Direction)
 {
 	ProjectileMovementComponent->Velocity = Direction * ProjectileMovementComponent->InitialSpeed;
 	CollisionComponent->IgnoreActorWhenMoving(GetOwner(), true);
+	
 	OnProjectileLaunched();
 }
 
+void ABaseProjectile::SetProjectileActive_Implementation(bool bIsProjectileActive)
+{
+	ProjectileMovementComponent->SetActive(bIsProjectileActive);
+}
+
+float ABaseProjectile::GetTimerDetonation()
+{
+	return 0.f;
+}
+ 
 void ABaseProjectile::OnProjectileLaunched()
 {
+	
 }
 
 void ABaseProjectile::BeginPlay()
@@ -42,9 +58,11 @@ void ABaseProjectile::OnCollisionHit(UPrimitiveComponent* HitComponent,
 {
 	if(OnProjectileHit.IsBound())
 	{
-		OnProjectileHit.Broadcast(Hit, ProjectileMovementComponent->Velocity.GetSafeNormal());
+		OnProjectileHit.Broadcast(this, Hit, ProjectileMovementComponent->Velocity.GetSafeNormal());
 	}
 }
+ 
+ 
 
 
 

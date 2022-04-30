@@ -90,12 +90,14 @@ public:
 	void StartFire();
 	void StopFire();
 
+	bool IsFiring() const;
 	void StartAim();
 	void StopAim();
 
 	void StartReload();
 	void EndReload(bool bIsSuccess);
-	
+
+	bool IsReloading() const;
 	float GetAimFOV();
 	UCurveFloat* GetFOVCurve();
 
@@ -116,12 +118,18 @@ public:
 
 	virtual void SecondaryFire();
 
+
+	UFUNCTION(Server, Reliable)
+	void Server_SecondaryFire();
+	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	FOnAmmoChange OnAmmoChange;
 	FOnReloadComplete OnReloadComplete;
 
 	virtual  ECurrentReticle GetCurrentReticle() const override;
 
-
+ 
 protected:
 
 	virtual void BeginPlay() override;
@@ -161,8 +169,6 @@ protected:
 
 	float GetCurrentBulletSpreadAngle() const;
 private:
-
-
 	bool bIsReloading = false;
 	bool bIsFireEnable = false;
 	
@@ -182,8 +188,16 @@ private:
 	void OnShotTimerElapsed();
 
 	void InitializeWeaponMode();
+
+	UPROPERTY(Replicated)
 	FWeaponModeProperty CurrentWeaponModeProperty;
+
+	 
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentWeaponMode)
 	EWeaponMode CurrentWeaponMode;
+
+	 UFUNCTION()
+	 void OnRep_CurrentWeaponMode(EWeaponMode CurrentWeaponMode_Old);
 
 	FWeaponModeProperty NextWeaponMode(bool bWasCurrentKey);
 };

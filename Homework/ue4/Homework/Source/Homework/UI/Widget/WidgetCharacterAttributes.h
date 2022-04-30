@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/CharacterComponents/CharacterAttributeComponent.h"
 #include "WidgetCharacterAttributes.generated.h"
 
-struct FDefaultAttributeProperty;
+
+
 enum class ECurrentAttribute : uint8;
 /**
  * 

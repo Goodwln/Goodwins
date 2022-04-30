@@ -28,5 +28,5 @@ protected:
 	float IKHitOffset = 0.f;
 
 private:
-	TWeakObjectPtr<class APlayerCharacter> CachedPlayerCharacter;
+	TWeakObjectPtr<class ABaseCharacter> CachedPlayerCharacter;
 };

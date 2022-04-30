@@ -27,7 +27,8 @@ class HOMEWORK_API AExplosiveProjectile : public ABaseProjectile
 
 public:
 	AExplosiveProjectile();
-	
+
+	virtual float GetTimerDetonation() override;
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UExplosionComponent* ExplosionComponent;
@@ -45,5 +46,5 @@ protected:
 private:
 	void OnDetonationTimerElapse();
 	FTimerHandle DetonationTimer;
-	
+
 };

@@ -7,10 +7,13 @@
 
 void AThrowableItem::Throw()
 {
-	checkf(GetOwner()->IsA<ABaseCharacter>(), TEXT("ARangeWeaponItem::Fire() only character can be an owner of range weapon"));
-	ABaseCharacter* CharacterOwner = StaticCast<ABaseCharacter*>(GetOwner());
+	ABaseCharacter* CharacterOwner = GetCharacterOwner();
 
-	APlayerController* Controller = CharacterOwner->GetController<APlayerController>();
+	if(!IsValid(CharacterOwner))
+	{
+		return;
+	}
+	AController* Controller = CharacterOwner->GetController<AController>();
 	if (!IsValid(Controller))
 	{
 		return;
@@ -34,8 +37,16 @@ void AThrowableItem::Throw()
 	if(IsValid(Projectile))
 	{
 		Projectile->SetOwner(GetOwner());
+		Projectile->SetProjectileActive(true);
+		Projectile->SetActorEnableCollision(true);
 		Projectile->LaunchProjectile(LaunchDirection.GetSafeNormal());
-		
-	}                                                                                                                                                                                                                                                       
+		Projectile->OnProjectileHit.AddDynamic(this, &AThrowableItem::kek);
+	}
+}
+
+
+void AThrowableItem::kek(ABaseProjectile* Projectile, const FHitResult& Hit, const FVector& Direction)
+{
+	
 }
 

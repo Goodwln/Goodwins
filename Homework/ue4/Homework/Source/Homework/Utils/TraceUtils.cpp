@@ -43,7 +43,7 @@ bool TraceUtils::SweepSphereSingleByChanel(const UWorld* World, struct FHitResul
 	
 		FQuat DegugCapsuleRotation = FRotationMatrix::MakeFromZ(TraceVector).ToQuat();
 
-		DrawDebugCapsule(World, DebugDrawCapsuleLocation, DebugCapsuleHalfHeight, Radius, FQuat::Identity, TraceColor, false, DrawTime);
+		DrawDebugCapsule(World, DebugDrawCapsuleLocation, DebugCapsuleHalfHeight, Radius, DegugCapsuleRotation, TraceColor, false, DrawTime);
 
 		if (bResult)
 		{

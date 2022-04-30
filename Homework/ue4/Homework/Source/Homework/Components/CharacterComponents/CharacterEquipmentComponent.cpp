@@ -6,15 +6,21 @@
 #include "HomeworkTypes.h"
 #include "Actors/Equipment/Weapons/RangeWeaponItem.h"
 #include "Characters/BaseCharacter.h"
+ 
 
 
+UCharacterEquipmentComponent::UCharacterEquipmentComponent()
+{
+ 
+}
+ 
 EEquipableItemType UCharacterEquipmentComponent::GetCurrentEquippedItemType() const
 {
 	EEquipableItemType Result = EEquipableItemType::None;
 
-	if(IsValid(CurrentEquippedWeapon))
+	if(IsValid(CurrentEquipableItem))
 	{
-		Result = CurrentEquippedWeapon->GetItemType();
+		Result = CurrentEquipableItem->GetItemType();
 	}
 	return Result;
 }
@@ -22,6 +28,11 @@ EEquipableItemType UCharacterEquipmentComponent::GetCurrentEquippedItemType() co
 ARangeWeaponItem* UCharacterEquipmentComponent::GetCurrentRangeWeapon() const
 {
 	return CurrentEquippedWeapon;
+}
+
+AMeleeWeaponItem* UCharacterEquipmentComponent::GetCurrentMeleeWeaponItem() const
+{
+	return CurrentMeleeWeaponItem;
 }
 
 void UCharacterEquipmentComponent::ReloadCurrentWeapon()
@@ -82,12 +93,12 @@ void UCharacterEquipmentComponent::LaunchThrowCurrenThrowable()
 		
 		if(OnCurrentCapacityThrowableChangedEvent.IsBound())
 		{
-			OnCurrentCapacityThrowableChangedEvent.Broadcast(CapacityThrowable, MaxThrowable);
+			OnCurrentCapacityThrowableChangedEvent.Broadcast(CapacityThrowable, MaxAmunitionAmount.FindRef(EAmunitionType::Grenade));
 		}
 		EquipItemInSlot(PreviousEquipmentSlot);
 	}
 }
-
+ 
 void UCharacterEquipmentComponent::EquipItemInSlot(EEquipmentSlot Slot)
 {
 	if(bIsEquiping)
@@ -96,31 +107,39 @@ void UCharacterEquipmentComponent::EquipItemInSlot(EEquipmentSlot Slot)
 	}
 	
 	UnEquipCurrentItem();
-	
+  
 	CurrentEquipableItem = ItemArray[(uint32)Slot];
 	CurrentEquippedWeapon = Cast<ARangeWeaponItem>(CurrentEquipableItem);
 	CurrentThrowableItem = Cast<AThrowableItem>(CurrentEquipableItem);
+	CurrentMeleeWeaponItem = Cast<AMeleeWeaponItem>(CurrentEquipableItem);
+
 	if(IsValid(CurrentEquipableItem))
 	{
 		UAnimMontage* EquipMontage = CurrentEquipableItem->GetCharacterEquipmentAnimMontage();
+		CurrentEquipmentSlot = Slot;
 		if(IsValid(EquipMontage))
-		{
+		{ 
 			bIsEquiping = true;
-			float DurationMontage = CacheBaseCharacter->PlayAnimMontage(EquipMontage);
-			GetWorld()->GetTimerManager().SetTimer(TimerEquip, this, &UCharacterEquipmentComponent::EquipAnimationFinised, DurationMontage, false);
+			if(CacheBaseCharacter.IsValid())
+			{
+				float DurationMontage = CacheBaseCharacter->PlayAnimMontage(EquipMontage);
+				GetWorld()->GetTimerManager().SetTimer(TimerEquip, this, &UCharacterEquipmentComponent::EquipAnimationFinised, DurationMontage, false);
+			}
 		}
 		else
 		{
 			AttachCurrentItemToEquippedSocket();
 		}
+		if(PreviousEquipmentSlot == EEquipmentSlot::None)
+		{
+			PreviousEquipmentSlot = Slot;
+		}
 		
-		CurrentEquipmentSlot = Slot;
 		if(IsValid(CurrentEquipableItem))
 		{
 			CurrentEquipableItem->Equip();
 		}
-	}
-
+	} 
 
 	if(IsValid(CurrentEquippedWeapon))
 	{
@@ -133,18 +152,18 @@ void UCharacterEquipmentComponent::EquipItemInSlot(EEquipmentSlot Slot)
 	{
 		OnEquippedItemChangedEvent.Broadcast(CurrentEquipableItem);
 	}
-	
+ 
 }
 
 void UCharacterEquipmentComponent::BeginPlay()
-{
+{	
 	Super::BeginPlay();
-
+	
 	checkf(GetOwner()->IsA<ABaseCharacter>(), TEXT("UCharacterEquipmentComponent::BeginPlay() can use only ABaseCharacter"));
 	CacheBaseCharacter = StaticCast<ABaseCharacter*>(GetOwner());
-	CreateLoadout();																																																																																																																					
-
-} 
+	CreateLoadout();
+	AutoEquip();
+}
 
 void UCharacterEquipmentComponent::EquipNextItem()
 {
@@ -189,8 +208,24 @@ int32 UCharacterEquipmentComponent::GetCapacityThrowable() const
 	return CapacityThrowable;
 }
 
+void UCharacterEquipmentComponent::ClearEquip()
+{
+	for (auto Item : ItemArray)
+	{
+		if(IsValid(Item))
+		{
+			Item->Destroy();
+		}
+	}
+}
+
 void UCharacterEquipmentComponent::CreateLoadout()
 {
+	if(GetOwner()->GetLocalRole() < ROLE_Authority)
+	{
+		return;
+	}
+	
 	AmunitionArray.AddZeroed((uint32)EAmunitionType::MAX);
 
 	for(const TPair<EAmunitionType, int32>& AmmoPair: MaxAmunitionAmount)
@@ -200,7 +235,7 @@ void UCharacterEquipmentComponent::CreateLoadout()
 
 	ItemArray.AddZeroed((uint32)EEquipmentSlot::MAX);
 	
-	for (const TPair<EEquipmentSlot, TSubclassOf<class AEqupableItem>> ItemPair : ItemsLoadout)
+	for (const TPair<EEquipmentSlot, TSubclassOf<AEqupableItem>> ItemPair : ItemsLoadout)
 	{
 		if(!IsValid(ItemPair.Value))
 		{
@@ -212,11 +247,23 @@ void UCharacterEquipmentComponent::CreateLoadout()
 		Item->UnEquip();
 		ItemArray[(uint32)ItemPair.Key] = Item;
 	}
-	CapacityThrowable = MaxThrowable;
-	
-	if(OnCurrentCapacityThrowableChangedEvent.IsBound())
+	if (MaxAmunitionAmount.Contains(EAmunitionType::Grenade))
 	{
-		OnCurrentCapacityThrowableChangedEvent.Broadcast(CapacityThrowable, MaxThrowable);
+		CapacityThrowable = AmunitionArray[(uint32)EAmunitionType::Grenade];
+
+		if (OnCurrentCapacityThrowableChangedEvent.IsBound())
+		{
+			OnCurrentCapacityThrowableChangedEvent.Broadcast(CapacityThrowable,
+			                                                 MaxAmunitionAmount.FindRef(EAmunitionType::Grenade));
+		}
+	}
+}
+
+void UCharacterEquipmentComponent::AutoEquip()
+{
+	if(AutoEquipmentSlot != EEquipmentSlot::None)
+	{
+		EquipItemInSlot(AutoEquipmentSlot);
 	}
 }
 
@@ -240,7 +287,7 @@ void UCharacterEquipmentComponent::OnWeaponReloadComplete()
 {
 	ReloadAmmoInCurrentWeapon();
 }
-
+ 
 void UCharacterEquipmentComponent::ReloadAmmoInCurrentWeapon(int32 NumberOfAmmo, bool bCheckIsFull)
 {
 	int32 AvailableAmunition = GetAvailableAmunitionForCurrentWeapon();

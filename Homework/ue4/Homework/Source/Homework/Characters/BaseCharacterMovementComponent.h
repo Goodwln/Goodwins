@@ -22,7 +22,7 @@ struct FMantlingMovementParameters
 	
 	FVector InitialAnimationLocation = FVector::ZeroVector;
 	
-	class UPrimitiveComponent* ActorTargetLedge;
+	 UPrimitiveComponent* ActorTargetLedge;
 
 	FVector SaveLocation = FVector::ZeroVector;
 	
@@ -105,6 +105,9 @@ UCLASS()
 class HOMEWORK_API UBaseCharacterMovementComponent : public UCharacterMovementComponent
 {
 	GENERATED_BODY()
+
+	friend class FSaveMove_BaseCharacter;
+
 	
 public:
 	UBaseCharacterMovementComponent();
@@ -160,6 +163,8 @@ public:
 	void StartSlide(FSlideParameters& OutSlideParameters);
 	
 	void StopSlide();
+
+	bool GetIsSprinting() const { return  bIsSprinting; }
 protected:
 	// Capsule radius in a prone state
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character movement|Prone", meta = (ClampMin = 1.f))
@@ -250,7 +255,7 @@ protected:
 
 	void PhysMantling(float DeltaTime, int32 Iterations);
 
-	void MoveUpdateMantling(FVector CorrectedInitialLocation, FVector &TargetUpdateLocation, float PositionAlpha);
+	void MoveUpdateMantling(FVector CorrectedInitialLocation, FVector &TargetUpdateLocation, float PositionAlpha, float DeltaTime);
 
 	virtual void PhysicsRotation(float DeltaTime) override;
 	void InitTimelineWallRunSideRotation();
@@ -327,6 +332,7 @@ private:
 	FRotator PrevRotation = FRotator::ZeroRotator;
 public:
 
+ 	
 	FCapsuleSize GetCurrentCapsuleSize(const ECurrentCapsuleSize OutCurrentCapsuleSize);
 	float GetCurrentWallRunSide() const;
 	float GetProneCapsuleHalfHeight() const;
@@ -341,3 +347,4 @@ public:
 	bool GetIsEndSlideChangeOnCrouch() const;
 	bool GetIsOutOfStamina() const;
 };
+  

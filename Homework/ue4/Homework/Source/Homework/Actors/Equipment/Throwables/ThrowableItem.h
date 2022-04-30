@@ -16,11 +16,15 @@ class HOMEWORK_API AThrowableItem : public AEqupableItem
 
 public:
 	void Throw();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Throwables")
 	TSubclassOf<class ABaseProjectile> ProjectileClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Throwables", meta = (UIMin = -90, UIMax = 90, ClampMin = -90, ClampMax = 90))
 	float ThrowAngle = 30.f;
-	
+
+private:
+	UFUNCTION()
+	void kek(ABaseProjectile* Projectile, const FHitResult& Hit, const FVector& Direction);
 };

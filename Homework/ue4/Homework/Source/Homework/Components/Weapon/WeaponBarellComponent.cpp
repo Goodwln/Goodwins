@@ -11,15 +11,37 @@
 #include "NiagaraComponent.h"
 #include "Components/DecalComponent.h"
 #include "Actors/Projectiles/BaseProjectile.h"
+#include "Characters/BaseCharacter.h"
+#include "Net/UnrealNetwork.h"
+
+
+UWeaponBarellComponent::UWeaponBarellComponent()
+{
+	SetIsReplicatedByDefault(true);
+}
 
 void UWeaponBarellComponent::TraceFXPainting(FVector ShotEnd)
 {
 	FVector MuzzleStart = GetComponentLocation();
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), CurrentWeaponBarrelProperty.MuzzleFlashFX, MuzzleStart, GetComponentRotation());
 
-	UNiagaraComponent* TraceFXComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-		GetWorld(), CurrentWeaponBarrelProperty.TraceFX, MuzzleStart, GetComponentRotation());
-	TraceFXComponent->SetVectorParameter(FXParamTraceEnd, ShotEnd);
+	if(IsValid(CurrentWeaponBarrelProperty.MuzzleFlashFX))
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+							     GetWorld(),
+							     CurrentWeaponBarrelProperty.MuzzleFlashFX,
+							     MuzzleStart,
+							     GetComponentRotation());
+	}
+
+	if(IsValid(CurrentWeaponBarrelProperty.TraceFX))
+	{
+		UNiagaraComponent* TraceFXComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+																  GetWorld(),
+																  CurrentWeaponBarrelProperty.TraceFX,
+																  MuzzleStart,
+																  GetComponentRotation());
+		TraceFXComponent->SetVectorParameter(FXParamTraceEnd, ShotEnd);
+	}
 }
 
 void UWeaponBarellComponent::DrawDecal(FHitResult ShotResult)
@@ -35,9 +57,72 @@ void UWeaponBarellComponent::DrawDecal(FHitResult ShotResult)
 	}
 }
 
+void UWeaponBarellComponent::InitProjectileForCurrentWeapon()
+{
+	check(AllWeaponBarrelProperty.Num() > 0);
+	
+	for (auto &WeaponBarrelPropertyElem : AllWeaponBarrelProperty)
+	{
+		if(!IsValid(WeaponBarrelPropertyElem.Value.ProjectileClass))
+		{
+			continue;
+		}
+		const int32 PoolSize = WeaponBarrelPropertyElem.Value.ProjectilePoolSize;
+		ABaseProjectile* Projectile = GetWorld()->SpawnActor<ABaseProjectile>(WeaponBarrelPropertyElem.Value.ProjectileClass, ProjectilePoolLocation, FRotator::ZeroRotator);
+		Projectile->SetOwner(GetPawnOwner());
+		Projectile->SetProjectileActive(true);
+		Projectile->SetActorEnableCollision(false);
+
+		FInnerArrayProjectilePool ProjectilePool;
+		ProjectilePool.ProjectilePool.Init(Projectile, PoolSize);
+		WeaponModeProjectilesPool.Init(ProjectilePool, PoolSize);
+	}
+}
+
+
 void UWeaponBarellComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	InitProjectileForCurrentWeapon();
+}
+
+void UWeaponBarellComponent::Server_Shot_Implementation(FVector ShotStart, FVector ShotDirection, float SpreadAngle)
+{
+ 	if(GetPawnOwner()->GetLocalRole() == ROLE_Authority)
+	{
+		NetMulticast_Shot(ShotStart, ShotDirection,SpreadAngle);
+
+	}
+}
+
+
+void UWeaponBarellComponent::NetMulticast_Shot_Implementation(FVector ShotStart, FVector ShotDirection, float SpreadAngle)
+{
+	ShotReplicated(ShotStart, ShotDirection,SpreadAngle);
+}
+
+void UWeaponBarellComponent::ShotReplicated(FVector ShotStart, FVector ShotDirection, float SpreadAngle)
+{
+	for (int i = 0; i < CurrentWeaponBarrelProperty.BulletPerShot; i++)
+	{
+		switch (CurrentWeaponBarrelProperty.HitRegistration)
+		{
+		case EHitRegistrationType::HitScan:
+			{
+				HitScan(ShotStart, ShotDirection, SpreadAngle);
+				break;
+			}
+		case EHitRegistrationType::Projectile:
+			{
+				ProjectileScan(ShotStart, ShotDirection);
+				break;
+			}
+		case EHitRegistrationType::None:
+			{
+				break;
+			}
+		}
+	}
 }
 
 bool UWeaponBarellComponent::HitScan(FVector ShotStart, FVector ShotDirection, float SpreadAngle)
@@ -73,31 +158,30 @@ bool UWeaponBarellComponent::HitScan(FVector ShotStart, FVector ShotDirection, f
 	{
 		ProcessHit(TraceResult, Direction);
 		TraceFXPainting(ShotEnd);
-		return true;
+		return true;	
 	}
 
 	return false;
 }
 
-void UWeaponBarellComponent::LaunchProjectile(const FVector& Direction)
+void UWeaponBarellComponent::LaunchProjectile(const FVector& LaunchStart, const FVector& Direction)
 {
-	const FVector Start = GetComponentLocation();
+	int32 IndexWeaponMode = (uint8)CurrentWeaponMode;
+	ABaseProjectile* Projectile = WeaponModeProjectilesPool[IndexWeaponMode].ProjectilePool[CurrentProjectileIndex];
+	Projectile->SetActorLocation(LaunchStart);
+	Projectile->SetProjectileActive(true);
+	Projectile->LaunchProjectile(Direction.GetSafeNormal());
+	Projectile->SetActorEnableCollision(true);
+	Projectile->OnProjectileHit.AddDynamic(this, &UWeaponBarellComponent::ProcessProjectileHit);
 	
-	ABaseProjectile* Projectile = GetWorld()->SpawnActor<ABaseProjectile>(CurrentWeaponBarrelProperty.ProjectileClass, Start, Direction.ToOrientationRotator());
-	if(IsValid(Projectile))
-	{
-		StartShot = Start;
-		Projectile->SetOwner(GetPawnOwner());
-		Projectile->OnProjectileHit.AddDynamic(this, &UWeaponBarellComponent::ProcessHit);
-		Projectile->LaunchProjectile(Direction.GetSafeNormal());
-	}
+	CurrentProjectileIndex = (CurrentProjectileIndex + 1) % WeaponModeProjectilesPool[IndexWeaponMode].ProjectilePool.Num();
 }
 
 void UWeaponBarellComponent::ProcessHit(const FHitResult& HitResult, const FVector& Direction)
 {
 	FVector HitLocation = HitResult.ImpactPoint;
 	AActor* HitActor = Cast<AActor>( HitResult.GetActor());
-	if (IsValid(HitActor))
+	if (GetOwner()->HasAuthority() && IsValid(HitActor))
 	{
 		FPointDamageEvent DamageEvent;
 		DamageEvent.HitInfo = HitResult;
@@ -131,57 +215,30 @@ void UWeaponBarellComponent::ProjectileScan(FVector& ShotStart, FVector& ShotDir
 	
 	FHitResult TraceResult;
 	TraceUtils::LineTraceSingleByChanel(GetWorld(), TraceResult, ShotStart, ShotEnd, ECC_Bullet, QueryParams,
-	                                    FCollisionResponseParams::DefaultResponseParam);
+	FCollisionResponseParams::DefaultResponseParam);
+
+	ShotEnd = TraceResult.ImpactPoint;
+	ShotStart = GetComponentLocation();
+	
 	if(TraceResult.ImpactPoint == FVector::ZeroVector)
 	{
 		float Offset = 2000.f;
 		ShotEnd = ShotStart + ShotDirection * Offset;
-		FVector Direction = ShotEnd - ShotStart;
-		LaunchProjectile(Direction);
-		return;
 	}
-	ShotEnd = TraceResult.ImpactPoint;
-	ShotStart = GetComponentLocation();
 	FVector Direction = ShotEnd - ShotStart;
-	LaunchProjectile(Direction);
+	LaunchProjectile(ShotStart, Direction);
 }
+
+void UWeaponBarellComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(UWeaponBarellComponent, CurrentWeaponBarrelProperty);
+	DOREPLIFETIME(UWeaponBarellComponent, CurrentWeaponMode);
+ }
 
 void UWeaponBarellComponent::Shot(FVector& ShotStart, FVector& ShotDirection, float SpreadAngle)
 {
-#if UE_BUILD_DEVELOPMENT || UE_BUILD_DEBUG
-	UDebugSubsystem* DebugSubsystem = UGameplayStatics::GetGameInstance(GetWorld())->GetSubsystem<UDebugSubsystem>();
-	bool bIsDebugEnable = DebugSubsystem->IsCategoryEnable(DebugCategoryShotDetection);
-#else
-	bool bIsDebugEnable = false;
-#endif
-	float DrawTime = 2.f;
-
-	bool bIsTrueShot = false;
-	
-	for (int i = 0; i < CurrentWeaponBarrelProperty.BulletPerShot; i++)
-	{
-		switch (CurrentWeaponBarrelProperty.HitRegistration)
-		{
-			case EHitRegistrationType::HitScan:
-			{
-				bIsTrueShot = HitScan(ShotStart, ShotDirection, SpreadAngle);
-				break;
-			}
-			case EHitRegistrationType::Projectile:
-			{
-				ProjectileScan(ShotStart, ShotDirection);
-				break;
-			}
-		}
-	}
-	
-#if UE_BUILD_DEVELOPMENT || UE_BUILD_DEBUG
-	if (bIsDebugEnable && bIsTrueShot)
-	{
-		DrawDebugSphere(GetWorld(), ShotDirection, 10.f, 24, FColor::Red, true, DrawTime);
-	}
-#endif
-	
+	Server_Shot(ShotStart, ShotDirection, SpreadAngle);
 }
 
 float UWeaponBarellComponent::GetBulletPerShot() const
@@ -194,17 +251,44 @@ EHitRegistrationType UWeaponBarellComponent::GetHitRegistration() const
 	return CurrentWeaponBarrelProperty.HitRegistration;
 }
 
-void UWeaponBarellComponent::ChangeWeaponBarrelProperty(EWeaponMode CurrentWeaponMode)
+void UWeaponBarellComponent::ChangeWeaponBarrelProperty(EWeaponMode CurrentWeaponMode_In)
 {
+	CurrentWeaponMode = CurrentWeaponMode_In;
 	for(const auto &Elem : AllWeaponBarrelProperty)
 	{
-		if(Elem.Key == CurrentWeaponMode)
+		if(Elem.Key == CurrentWeaponMode_In)
 		{
 			CurrentWeaponBarrelProperty = Elem.Value;
 		}
 	}
 }
 
+void UWeaponBarellComponent::Server_ChangeWeaponBarrelProperty_Implementation(EWeaponMode CurrentWeaponMode_In)
+{
+	ChangeWeaponBarrelProperty(CurrentWeaponMode_In);
+}
+
+
+void UWeaponBarellComponent::ProcessProjectileHit(ABaseProjectile* Projectile, const FHitResult& HitResult,
+                                                  const FVector& Direction)
+{
+	Projectile->SetProjectileActive(false);
+	Projectile->SetActorEnableCollision(false);
+	Projectile->OnProjectileHit.RemoveAll(this);
+	ProcessHit(HitResult, Direction);
+	
+	GetWorld()->GetTimerManager().SetTimer(
+		TimeDetonation,
+		[ Projectile, this ]()
+		{
+			Projectile->SetActorLocation(ProjectilePoolLocation);
+			Projectile->SetActorRotation(FRotator::ZeroRotator);
+		},			
+		Projectile->GetTimerDetonation() + 1.f,
+		false); 
+}
+
+ 
 
 FVector UWeaponBarellComponent::GetBulletSpreadOffset(float Angle, FRotator ShotRotation) const
 {
@@ -218,7 +302,6 @@ FVector UWeaponBarellComponent::GetBulletSpreadOffset(float Angle, FRotator Shot
 					+ ShotRotation.RotateVector(FVector::RightVector) * SpreadY) * SpreadSize;
 	return Result;
 }
-
 
 APawn* UWeaponBarellComponent::GetPawnOwner() const
 {

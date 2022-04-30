@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "HomeworkTypes.h"
+#include "Net/UnrealNetwork.h"
 #include "CharacterAttributeComponent.generated.h"
 
 USTRUCT(BlueprintType)
@@ -18,10 +19,12 @@ struct FDefaultAttributeProperty
 
 
 DECLARE_MULTICAST_DELEGATE(FOnDeathEventSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeathBlueprintImplamentationEventSignature);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FChangeStaminaEventSignature, float, float, FDefaultAttributeProperty);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnChangeOxygenEventSignature, float, float, FDefaultAttributeProperty);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnChangeHealthEventSignature, float, float, FDefaultAttributeProperty);
-
+DECLARE_MULTICAST_DELEGATE_FiveParams(FOnTakeAnyDamageEventSignature, AActor*, float, const class UDamageType*,
+					class AController*, AActor*);
 
 class ABaseCharacter;
 
@@ -34,11 +37,16 @@ public:
 	UCharacterAttributeComponent();
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
+  
 	FOnDeathEventSignature OnDeathEvent;
+
+	UPROPERTY(BlueprintCallable)
+	FOnDeathBlueprintImplamentationEventSignature OnDeathBlueprintImplamentationEvent;
+
 	FChangeStaminaEventSignature OnChangeStaminaEvent;
 	FOnChangeOxygenEventSignature OnChangeOxygenEvent;
 	FOnChangeHealthEventSignature OnChangeHealthEvent;
+	FOnTakeAnyDamageEventSignature OnTakeAnyDamageEvent;
 	
 	bool IsAlive() { return CurrentHealth > 0.f; }
 
@@ -91,10 +99,18 @@ protected:
 	
 private:
 	TWeakObjectPtr<ABaseCharacter> CacheBaseCharacter;
-	
+
+	UPROPERTY( )
 	float CurrentHealth = 0.f;
+ 
+
+	void OnHealthChanged(AController* KillerController);
+	
 	float CurrentStamina = 0.f;
 	float CurrentOxygen = 0.f;
 	bool bIsActiveStamina = false;
 	bool bIsActiveOxygen = false;
-};
+
+	void Killed(AController* Controller);
+}; 
+

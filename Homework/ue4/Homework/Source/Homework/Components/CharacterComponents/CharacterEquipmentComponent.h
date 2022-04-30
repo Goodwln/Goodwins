@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "HomeworkTypes.h"
 #include "Actors/Equipment/Throwables/ThrowableItem.h"
+#include "Actors/Equipment/Weapons/MeleeWeaponItem.h"
 #include "Actors/Equipment/Weapons/RangeWeaponItem.h"
 #include "Components/ActorComponent.h"
 #include "CharacterEquipmentComponent.generated.h"
@@ -12,9 +13,7 @@
 class AEqupableItem;
 class ARangeWeaponItem;
 class AThrowableItem;
-
-typedef TArray<class AEqupableItem*, TInlineAllocator<(uint32)EEquipmentSlot::MAX>> TItemArray;
-typedef TArray<int32, TInlineAllocator<(uint32)EAmunitionType::MAX>> TAmunitionArray;
+class MeleeWeaponItem;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnCurrentWeaponAmmoChangedEvent, int32, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnCurrentCapacityThrowableChangedEvent, int32, int32);
@@ -26,9 +25,15 @@ class HOMEWORK_API UCharacterEquipmentComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
+
+	UCharacterEquipmentComponent();
+ 	
 	EEquipableItemType GetCurrentEquippedItemType() const;
 
 	ARangeWeaponItem* GetCurrentRangeWeapon() const;
+
+	AMeleeWeaponItem* GetCurrentMeleeWeaponItem() const;
+	
 	void ReloadCurrentWeapon();
 
 	void ReloadAmmoInCurrentWeapon(int32 NumberOfAmmo = 0, bool bCheckIsFull = false);
@@ -38,7 +43,7 @@ public:
 	void AttachCurrentItemToEquippedSocket();
 
 	void LaunchThrowCurrenThrowable();
-	
+  	
 	FOnCurrentWeaponAmmoChangedEvent OnCurrentWeaponAmmoChangedEvent;
 	FOnCurrentCapacityThrowableChangedEvent OnCurrentCapacityThrowableChangedEvent;
 	FOnEquippedItemChangedEvent OnEquippedItemChangedEvent;
@@ -50,36 +55,41 @@ public:
 
 	bool IsAvailableThrowable() const;
 	int32 GetCapacityThrowable() const;
-	
+
+	void ClearEquip();
 protected:
 	virtual void BeginPlay() override;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
-	TSubclassOf<class ARangeWeaponItem> SideArmClass;
+	TSubclassOf<ARangeWeaponItem> SideArmClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
 	TMap<EAmunitionType, int32> MaxAmunitionAmount;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
-	TMap<EEquipmentSlot, TSubclassOf<class AEqupableItem>> ItemsLoadout;
+	TMap<EEquipmentSlot, TSubclassOf<AEqupableItem>> ItemsLoadout;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
 	TSet<EEquipmentSlot> IgnoreSlotsWhileSwitching;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Grenade")
-	int32 MaxThrowable = 1;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
+	EEquipmentSlot AutoEquipmentSlot = EEquipmentSlot::None;
 
 private:
-
+  
 	int32 CapacityThrowable = 0;
-	
-	TAmunitionArray AmunitionArray;
-	TItemArray ItemArray;
-	
+
+	UPROPERTY( )
+	TArray<int32> AmunitionArray;
+
+	UPROPERTY( )
+	TArray<AEqupableItem*> ItemArray;
+ 
 	void CreateLoadout();
 
+	void AutoEquip();
 
-	TWeakObjectPtr<class ABaseCharacter> CacheBaseCharacter;
+	TWeakObjectPtr<ABaseCharacter> CacheBaseCharacter;
 
 	UFUNCTION()
 	void OnCurrentWeaponUpdatedAmmoChanged(int32 NewAmmo);
@@ -89,12 +99,20 @@ private:
 	UFUNCTION()
 	void OnWeaponReloadComplete();
 
+	UPROPERTY( )
 	EEquipmentSlot PreviousEquipmentSlot;
+
+	UPROPERTY( )
 	EEquipmentSlot CurrentEquipmentSlot;
-	
+ 
+	UPROPERTY( )
 	AEqupableItem* CurrentEquipableItem;
+	UPROPERTY( )
 	ARangeWeaponItem* CurrentEquippedWeapon;
+	UPROPERTY( )
 	AThrowableItem* CurrentThrowableItem;
+	UPROPERTY( )
+	AMeleeWeaponItem* CurrentMeleeWeaponItem;
 	
 	FDelegateHandle OnCurrentWeaponUpdatedAmmoChangedHandle;
 	FDelegateHandle OnWeaponReloadCompleteHandle;

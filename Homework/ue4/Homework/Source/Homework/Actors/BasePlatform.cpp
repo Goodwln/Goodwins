@@ -5,17 +5,15 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TimelineComponent.h"
-#include "Kismet/KismetMathLibrary.h"
-
-
-
+#include "Environment/PlatformTrigger.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ABasePlatform::ABasePlatform()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 
 	PrimaryActorTick.bCanEverTick = true;
-
+ 
 	USceneComponent* DefaultPlatformRoot = CreateDefaultSubobject<USceneComponent>(TEXT("Platform root"));
 	RootComponent = DefaultPlatformRoot;
 
@@ -27,6 +25,12 @@ void ABasePlatform::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if(IsValid(PlatformTrigger))
+	{
+		PlatformTrigger->OnTriggerActivated.AddDynamic(this, &ABasePlatform::MovePlatformEvent);
+		UE_LOG(LogTemp, Warning, TEXT("kek"));
+	}
+	
 	// Validation curve for current functioning
 	if (IsValid(PlatformMovementCurve))
 	{
@@ -78,18 +82,27 @@ void ABasePlatform::MovePlatformBPCallable()
 	{
 		MovementPlatformReverse();
 	}
-
-	if (OnDelegateTest.IsBound())
-	{
-		OnDelegateTest.Broadcast();
-	}
 }
 
-
+void ABasePlatform::MovePlatformEvent(bool bIsActivated_In)
+{
+	if (bIsActivated_In)
+	{
+		MovementPlatformPlay();
+	}
+	else
+	{
+		MovementPlatformReverse();
+	}
+}
+ 
 
 void ABasePlatform::UpdateTimelinePlatform(float Value)
 {
-	PlatformMesh->SetRelativeLocation(FMath::Lerp(StartLocation, EndLocation, Value));
+
+		PlatformMesh->SetRelativeLocation(FMath::Lerp(StartLocation, EndLocation, Value));
+ 
+	
 }
 
 
@@ -133,6 +146,8 @@ void ABasePlatform::MovePlatform()
 		MovementPlatformReverse();
 	}
 }
+
+
 
 void ABasePlatform::MovementPlatformStart()
 {

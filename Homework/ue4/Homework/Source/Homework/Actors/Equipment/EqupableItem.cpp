@@ -2,7 +2,27 @@
 
 
 #include "EqupableItem.h"
+#include "Homework/Characters/BaseCharacter.h"
 
+AEqupableItem::AEqupableItem()
+{
+ 
+}
+
+void AEqupableItem::SetOwner(AActor* NewOwner)
+{
+	Super::SetOwner(NewOwner);
+	if(IsValid(NewOwner))
+	{
+		checkf(GetOwner()->IsA<ABaseCharacter>(), TEXT("AEqupableItem::SetOwner only character can be an owner of an Equipable Item"));
+		CachedBaseCharacter = StaticCast<ABaseCharacter*>(GetOwner());
+ 
+	}	
+	else
+	{
+		CachedBaseCharacter = nullptr;
+	}
+}
 
 FName AEqupableItem::GetUnEquippedSocketName() const
 {
@@ -38,4 +58,9 @@ void AEqupableItem::UnEquip()
 ECurrentReticle AEqupableItem::GetCurrentReticle() const
 {
 	return CurrentReticle;			
+}
+
+ABaseCharacter* AEqupableItem::GetCharacterOwner() const
+{
+	return CachedBaseCharacter.Get();
 }

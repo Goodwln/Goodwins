@@ -6,22 +6,20 @@
 #include "GameFramework/Actor.h"
 #include "Components/TimelineComponent.h"
 
+
 #include "BasePlatform.generated.h"
-
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDelegateTest);
 
 UENUM(BlueprintType)
 enum class EPlatformBehavior : uint8
 {
-	OnDemand = 0, // Platform movement only when query
+	OnDemand, // Platform movement only when query
 	Loop // Platform movement by loop
 };
 
 UENUM(BlueprintType)
 enum class EPlatformDirection : uint8
 {
-	Stop = 0,
+	Stop,
 	Play,
 	Reverse
 };
@@ -35,15 +33,15 @@ public:
 	// Sets default values for this actor's properties
 	ABasePlatform();
 
-	UPROPERTY(BlueprintAssignable)
-	FOnDelegateTest OnDelegateTest;
-		
 protected:
 
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaSeconds) override;
 
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly , Category = "Platform")
+	class APlatformTrigger* PlatformTrigger;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Platform")
 	UStaticMeshComponent* PlatformMesh;
 
@@ -85,6 +83,9 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void MovePlatformBPCallable();
 
+	UFUNCTION()
+	void MovePlatformEvent(bool bIsActivated_In);
+ 
 private:
 	
 /* 	necessary using for update location
@@ -107,8 +108,9 @@ private:
 	void MovementPlatformPlay();
 
 	void MovementPlatformReverse();
-
-	// Timeline needful for visible movement a platform 
+	
+	// Timeline needful for visible movement a platform
+	UPROPERTY( )
 	FTimeline PlatformMovementTimeline;
 
 	FORCEINLINE void StartPlatform() { PlatformMovementTimeline.PlayFromStart(); }
@@ -126,4 +128,6 @@ private:
 	void MovePlatform();
 
 	bool bIsLoopMovementPlatform;
+
+	
 };

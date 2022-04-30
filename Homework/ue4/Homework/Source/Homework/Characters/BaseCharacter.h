@@ -3,15 +3,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GenericTeamAgentInterface.h"
 #include "Components/CharacterComponents/CharacterAttributeComponent.h"
 #include "Components/CharacterComponents/CharacterEquipmentComponent.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "PlayerState/HWPlayerState.h"
 #include "BaseCharacter.generated.h"
 
+ 
 class AInteractiveActor;
 class UBaseCharacterMovementComponent;
 class UCharacterEquipmentComponent;
 class UCharacterAttributeComponent;
+class ATeamManager;
+class APlatformTrigger;
 struct FDefaultAttributeProperty;
 
 USTRUCT(BlueprintType)
@@ -48,8 +54,8 @@ public:
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnAimingStateChanged, bool);
 
-UCLASS(Abstract, NotBlueprintable)
-class HOMEWORK_API ABaseCharacter : public ACharacter
+UCLASS(Abstract)
+class HOMEWORK_API ABaseCharacter : public ACharacter, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -82,17 +88,40 @@ public:
 	void TryChangeOxygenState(float DeltaSeconds);
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
-	virtual void Mantle(bool bForce = false);
+	
+	UFUNCTION(BlueprintCallable)
+	void Mantle(bool bForce = false);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Material")
+	FName MaterialColorName = "Paint Color";
+	
+	void SetPlayerColor(const FLinearColor& LinearColor);
+
+	UPROPERTY(ReplicatedUsing=OnRep_IsMantling)
+	bool bIsMantling;
+
+	UFUNCTION()
+	void OnRep_IsMantling(bool bWasMantling);
+
+ 	
+	virtual void PossessedBy(AController* NewController) override;
 	virtual bool CanJumpInternal_Implementation() const override;
 	bool CanProne() const;
 	
 	UBaseCharacterMovementComponent* GetBaseCharacterMovementComponent() const { return BaseCharacterMovementComponent; }
 
 	void RegisterInteractiveActor(AInteractiveActor* InteractiveActor);
-	void UnRegisterInteractiveActor(class AInteractiveActor* InteractiveActor);
+	void UnRegisterInteractiveActor(AInteractiveActor* InteractiveActor);
+
+	UFUNCTION(BlueprintCallable)
 	void InteractWithZipline();
-	virtual void StartSlide();
+
+	UFUNCTION(BlueprintCallable)
+	virtual void StartSlide();																					
+	
+	UFUNCTION(BlueprintCallable)
 	virtual void StopSlide();
+	
 	void OnStartSlide();
 	void OnEndSlide();
 
@@ -103,6 +132,8 @@ public:
 	
 	void StartAiming();
 	void StopAiming();
+
+	FRotator GetAimOffset();
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Character")
 	void OnStartAiming();
@@ -116,10 +147,11 @@ public:
 	void PreviousItem();
 	void EquipPrimaryItem();
 	void SecondaryFire();
-
-
+	void PrimaryMeleeAttack();
+	void SecondaryMeleeAttack();
+ 
 	FOnAimingStateChanged OnAimingStateChanged;
-	
+ 
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Character|Movement")
 	void OnSprintStart();
@@ -199,19 +231,22 @@ protected:
 	UAnimMontage* OnDeathAnimMontage;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character | Attributes")
-	class UCurveFloat* FallDamageCurve;
-
-
+	UCurveFloat* FallDamageCurve;
+	
 	// Player stamina consumption rate
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Controls")
-	class UCharacterEquipmentComponent* CharacterEquipmentComponent;
+	UCharacterEquipmentComponent* CharacterEquipmentComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Camera")
 	float DefaultFOV = 90.f;
 
 	virtual void OnStartAimingInternal();
 	virtual void OnStopAimingInternal();
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character | Team")
+	ETeams Team = ETeams::Player;
+	 
+	virtual void Reset() override;
 private:
 	void TryChangeSprintState(float DeltaSeconds);
 	void PerDamage();
@@ -229,7 +264,7 @@ private:
 	
 	UPROPERTY()
 	UBaseCharacterMovementComponent* BaseCharacterMovementComponent;
-
+									
 	const FMantlingSettings& GetMantlingSettings(float LedgeHeight) const;
 
 	FTimerHandle TimerToDeath;
@@ -241,21 +276,32 @@ private:
 	virtual void Landed(const FHitResult& Hit) override;
 
 	FVector CurrentFallApex = FVector::ZeroVector;
-public:
 
+	/** IGenericTeamAgentInterface */
+
+	virtual FGenericTeamId GetGenericTeamId() const override;
+	
+	/** ~IGenericTeamAgentInterface */
+public:
+	
 	bool IsAiming();
 	float GetCurrentAimingMovementSpeed();
 	bool bIsProne = false;
 
+	UFUNCTION(BlueprintCallable)
 	void ClimbLadderUp(float Value);
-	
+
+	UFUNCTION(BlueprintCallable)
 	void InteractWithLadder();
 
 	const class ALadder* GetAvailableLadder() const;
 	const class AZipline* GetAvailableZipline() const;
 
-	class UFloorDetectorComponent* GetFloorDetectorComponent();
+	UFloorDetectorComponent* GetFloorDetectorComponent();
 
 	UCharacterAttributeComponent* GetCharacterAttributeComponent() const;
+	
+	ETeams GetTeam() const;
 
 };
+

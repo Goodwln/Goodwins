@@ -9,7 +9,7 @@ void UBaseCharacterAnimInstance::NativeBeginPlay()
 {
 	Super::NativeBeginPlay();
 	checkf(TryGetPawnOwner()->IsA<ABaseCharacter>(), TEXT("UBaseCharacterAnimInstance::NativeBeginPlay() UBaseCharacterAnimInstance can be used  only with ABaseCharacter "));
-	CachedBaseCharacter = StaticCast<ABaseCharacter*>(TryGetPawnOwner());
+	CachedBaseCharacter = Cast<ABaseCharacter>(TryGetPawnOwner());
 }
 
 void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -42,7 +42,7 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	const UCharacterEquipmentComponent* CharacterEquipment = CachedBaseCharacter->GetCharacterEquipmentComponent();
 	CurrentEquippedItemType = CharacterEquipment->GetCurrentEquippedItemType();
-	AimRotation = CachedBaseCharacter->GetBaseAimRotation();
+	AimRotation = CachedBaseCharacter->GetAimOffset();
 
 	ARangeWeaponItem* CurrentRangeWeaponItem = CharacterEquipment->GetCurrentRangeWeapon();
 	if(IsValid(CurrentRangeWeaponItem))

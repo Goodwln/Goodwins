@@ -15,8 +15,15 @@ class HOMEWORK_API UExplosionComponent : public USceneComponent
 	GENERATED_BODY()
 
 public:
+
+	UExplosionComponent();
+
+	virtual void BeginPlay() override;
+	
 	UFUNCTION(BlueprintCallable)
 	void Explode(AController* Controller);
+
+	void SetExplosionLocation(FVector NewExplosionLocation);
 	
 	UPROPERTY(BlueprintAssignable)
 	FOnExplosion OnExplosion;
@@ -32,17 +39,21 @@ protected:
 	float DamageFalloff = 1.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion | Damage")
-	TSubclassOf<class UDamageType> DamageTypeClass;
+	TSubclassOf< UDamageType> DamageTypeClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion | Radius", meta = (UIMin = 0.1f, ClampMin = 0.1f))
 	float InnerRadius = 300.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion | Radius", meta = (UIMin = 1.f, ClampMin = 1.f))
 	float OuterRadius= 500.f;
-
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Explosion | Radius")
 	UParticleSystem* ExplosionVFX;
-public:	
+private:
 
-		
+	UPROPERTY()
+	FVector ExplosionLocation;
+
 };
+
+

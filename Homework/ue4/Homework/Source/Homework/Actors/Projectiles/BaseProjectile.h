@@ -6,7 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "BaseProjectile.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnProjectileHit, const FHitResult&, Hit, const FVector&, Direction);
+class ABaseProjectile;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnProjectileHit, ABaseProjectile*, Projectile, const FHitResult&, Hit, const FVector&, Direction);
 
 UCLASS()
 class HOMEWORK_API ABaseProjectile : public AActor
@@ -17,12 +18,20 @@ public:
 	// Sets default values for this actor's properties
 	ABaseProjectile();
 
-	UFUNCTION(BlueprintCallable)
+ 	UFUNCTION(BlueprintCallable)
 	void LaunchProjectile(FVector Direction);
 
 	UPROPERTY(BlueprintAssignable)
 	FOnProjectileHit OnProjectileHit;
-	
+				
+	UFUNCTION(BlueprintNativeEvent)
+	void SetProjectileActive(bool bIsProjectileActive);
+ 
+
+	virtual float GetTimerDetonation();
+private:
+ 
+ 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class USphereComponent* CollisionComponent;
@@ -37,5 +46,8 @@ protected:
 	UFUNCTION()
 	virtual void OnCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
+ 
 
 };
+
+ 

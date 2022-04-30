@@ -3,6 +3,7 @@
 
 #include "CharacterAttributeComponent.h"
 #include "DrawDebugHelpers.h"
+#include "GameModeLearning.h"
 #include "Components/CapsuleComponent.h"
 #include "Homework/HomeworkTypes.h"
 #include "Homework/Characters/BaseCharacter.h"
@@ -14,27 +15,26 @@ UCharacterAttributeComponent::UCharacterAttributeComponent()
 {
 
 	PrimaryComponentTick.bCanEverTick = true;
-
-}
-
+ }
+ 
 void UCharacterAttributeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
 	checkf(GetOwner()->IsA<ABaseCharacter>(), TEXT("UCharacterAttributeComponent::UCharacterAttributeComponent() can be use only with ABaseCharacter"));
 	CacheBaseCharacter = StaticCast<ABaseCharacter*>(GetOwner());
-
-	CacheBaseCharacter->OnTakeAnyDamage.AddDynamic(this, &UCharacterAttributeComponent::TakeDamage);
 	CurrentHealth = MaxHealth;
 
-	const UEnum* AttributeList = StaticEnum<ECurrentAttribute>();
-	for (int32 i = 1; i < AttributeList->NumEnums() - 1; i++)
-	{
-		const ECurrentAttribute EnumType = static_cast<ECurrentAttribute>(i);
-		const FString EnumTypeName = UEnum::GetValueAsString(EnumType);
-		const bool AttributeCheckCond = AttributeProperty.Contains(EnumType);
-		checkf(AttributeCheckCond, TEXT("AttributeProperty for %s doesn't exist"), *EnumTypeName);
-	}              
+	CacheBaseCharacter->OnTakeAnyDamage.AddDynamic(this, &UCharacterAttributeComponent::TakeDamage);
+ 
+		const UEnum* AttributeList = StaticEnum<ECurrentAttribute>();
+		for (int32 i = 1; i < AttributeList->NumEnums() - 1; i++)
+		{
+			const ECurrentAttribute EnumType = static_cast<ECurrentAttribute>(i);
+			const FString EnumTypeName = UEnum::GetValueAsString(EnumType);
+			const bool AttributeCheckCond = AttributeProperty.Contains(EnumType);
+			checkf(AttributeCheckCond, TEXT("AttributeProperty for %s doesn't exist"), *EnumTypeName);
+		}     
 }
 
 float UCharacterAttributeComponent::GetHealthPercent() const
@@ -61,22 +61,21 @@ void UCharacterAttributeComponent::TakeDamage(AActor* DamagedActor, float Damage
 	}
 	
 	CurrentHealth = FMath::Clamp(CurrentHealth - Damage, 0.f, MaxHealth);
-//	UE_LOG(LogDamage, Warning, TEXT("UCharacterAttributeComponent::TakeDamage %s, CurrentHealth: %.2f, Damage: %.2f, Enemy: %s"), *CacheBaseCharacter->GetName(), CurrentHealth, Damage, *DamageCauser->GetName());
-
+	// UE_LOG(LogDamage, Warning, TEXT("UCharacterAttributeComponent::TakeDamage %s, CurrentHealth: %.2f, Damage: %.2f, Enemy: %s"), *CacheBaseCharacter->GetName(), CurrentHealth, Damage, *DamageCauser->GetName());
+ 
 	if(OnChangeHealthEvent.IsBound())
 	{
 		OnChangeHealthEvent.Broadcast(CurrentHealth, MaxHealth, AttributeProperty[ECurrentAttribute::Health]);
 	}
-	
-	if(CurrentHealth <= 0.f)
+
+	if(OnTakeAnyDamageEvent.IsBound())
 	{
-		//UE_LOG(LogDamage, Warning, TEXT("UCharacterAttributeComponent::TakeDamage %s Is killed by actor, Enemy: %s"), *CacheBaseCharacter->GetName(), *DamageCauser->GetName());
-		
-		OnDeathEvent.Broadcast();
+		OnTakeAnyDamageEvent.Broadcast(DamagedActor, Damage, DamageType,InstigatedBy, DamageCauser);
 	}
+
+	OnHealthChanged(InstigatedBy);
 }
-
-
+ 
 void UCharacterAttributeComponent::UpdateStaminaValue(float DeltaTime)
 {
 	const float PrevStamina = CurrentStamina;
@@ -126,7 +125,39 @@ void UCharacterAttributeComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	UpdateStaminaValue(DeltaTime);
 	UpdateOxygenValue(DeltaTime);
 }
+ 
+void UCharacterAttributeComponent::OnHealthChanged(AController* KillerController)
+{
+	if(CurrentHealth <= 0.f)
+	{
+		Killed(KillerController);
+		if(OnDeathBlueprintImplamentationEvent.IsBound())
+		{
+			OnDeathBlueprintImplamentationEvent.Broadcast();
+		}
+		OnDeathEvent.Broadcast();
+	}
+}
 
+void UCharacterAttributeComponent::Killed(AController* Controller)
+{
+	if(!IsValid(GetWorld()))
+	{
+		return;
+	}
+	
+	AGameModeLearning* GameMode = Cast<AGameModeLearning>(GetWorld()->GetAuthGameMode());
+	if(!IsValid(GameMode))
+	{
+		return;
+	}
+
+	APawn* Player = Cast<APawn>(GetOwner());
+	AController* VictimController = IsValid(Player) ? Player->GetController() : nullptr;
+ 
+
+	GameMode->Killed(Controller, VictimController);
+}
 
 #if UE_BUILD_DEBUG || UE_BUILD_DEVELOPMENT
 void UCharacterAttributeComponent::DebugDrawAttribute()
@@ -148,6 +179,7 @@ void UCharacterAttributeComponent::DebugDrawAttribute()
 	DrawDebugString(GetWorld(), TextLocation, FString::Printf(TEXT("Oxygen: %.2f"), CurrentOxygen), nullptr, FColor::Blue,0.f, true);
 
 }
+
 
 #endif
 
