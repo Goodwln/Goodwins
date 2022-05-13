@@ -26,11 +26,13 @@ public:
 				
 	UFUNCTION(BlueprintNativeEvent)
 	void SetProjectileActive(bool bIsProjectileActive);
- 
+
+	void ProjectileDisable(FVector Loctation, FRotator Rotation, float TimerDisable);
 
 	virtual float GetTimerDetonation();
 private:
  
+	FTimerHandle TimeDetonation;
  
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")

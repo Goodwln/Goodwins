@@ -2,21 +2,18 @@
 
 
 #include "BaseCharacterPlayerController.h"
+
+#include "GameModeLearning.h"
 #include "../BaseCharacter.h"
-#include "Components/CharacterComponents/CharacterAttributeComponent.h"
-#include "UI/Widget/PlayerHUDWidget.h"
 #include "UI/Widget/ReticleWidget.h"
-#include "UI/Widget/AmmoWidget.h"
-#include "UI/Widget/WidgetCharacterAttributes.h"
-#include "Components/CharacterComponents/CharacterEquipmentComponent.h"
 #include "Components/CharacterComponents/RespawnComponent.h"
+#include "GameFramework/GameModeBase.h"
+
 
 ABaseCharacterPlayerController::ABaseCharacterPlayerController()
 {
 	RespawnComponent = CreateDefaultSubobject<URespawnComponent>(TEXT("RespawnComponent"));
 }
-
-
 
 void ABaseCharacterPlayerController::OnPossess(APawn* InPawn)
 {
@@ -24,7 +21,17 @@ void ABaseCharacterPlayerController::OnPossess(APawn* InPawn)
 	CachedBaseCharacter = Cast<ABaseCharacter>(InPawn);
 
 	OnNewPawn.Broadcast(InPawn);
-	CreateAndInitializeWidget();
+}
+
+void ABaseCharacterPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	AGameModeLearning* GameMode = Cast<AGameModeLearning>(GetWorld()->GetAuthGameMode());
+	if(IsValid(GameMode))
+	{
+		GameMode->OnMatchStateChangedEvent.AddUObject(this, &ABaseCharacterPlayerController::OnMatchStateChanged);
+	}
 }
 
 void ABaseCharacterPlayerController::SetupInputComponent()
@@ -78,6 +85,8 @@ void ABaseCharacterPlayerController::SetupInputComponent()
 
 	InputComponent->BindAction("SecondaryMeleeAttack", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::SecondaryMeleeAttack);
 	InputComponent->BindAction("PrimaryMeleeAttack", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::PrimaryMeleeAttack);
+
+	InputComponent->BindAction("Pause", EInputEvent::IE_Pressed, this, &ABaseCharacterPlayerController::OnPauseGame);
 }
 
 void ABaseCharacterPlayerController::MoveForward(float val)
@@ -320,18 +329,27 @@ void ABaseCharacterPlayerController::SecondaryMeleeAttack()
 	}
 }
 
-void ABaseCharacterPlayerController::CreateAndInitializeWidget()
+void ABaseCharacterPlayerController::OnPauseGame()
 {
-	if(!IsValid(PlayerHUDWidget))
+	if(!IsValid(GetWorld()) || !IsValid(GetWorld()->GetAuthGameMode()))
 	{
-		PlayerHUDWidget = CreateWidget<UPlayerHUDWidget>(GetWorld(), PlayerHudWidgetClass);
+		return;
+	}
+	GetWorld()->GetAuthGameMode()->SetPause(this);
+}
 
-		if(IsValid(PlayerHUDWidget))
-		{
-			PlayerHUDWidget->AddToViewport();
-			PlayerHUDWidget->CreateAndInitializeWidget(CachedBaseCharacter.Get(),this);
-		 
-		}
+void ABaseCharacterPlayerController::OnMatchStateChanged(EMatchState MatchState)
+{
+	if(MatchState == EMatchState::InProgress)
+	{
+		SetInputMode(FInputModeGameOnly());
+		bShowMouseCursor = false;
+	}
+	else
+	{
+		SetInputMode(FInputModeUIOnly());
+		bShowMouseCursor = true;
 	}
 }
+
    

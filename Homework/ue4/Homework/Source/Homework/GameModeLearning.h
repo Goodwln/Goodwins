@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HomeworkTypes.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameModeLearning.generated.h"
 
@@ -46,9 +47,12 @@ class HOMEWORK_API AGameModeLearning : public AGameModeBase
 public:
 	AGameModeLearning();
 
+	FOnMatchStateChangedEventSignature OnMatchStateChangedEvent;
+	
 	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 	virtual void StartPlay() override;
-
+	virtual bool SetPause(APlayerController* PC, FCanUnpause CanUnpauseDelegate = FCanUnpause()) override;
+	virtual bool ClearPause() override;
 	void Killed(AController* KillerController, AController* VictimController);
 	void RespawnRequest(AController* Controller);
 
@@ -67,6 +71,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Game")
 	FGameData GameData;
 private:
+
+	EMatchState MatchState = EMatchState::WaitingToStart;
 	int32 CurrentRound = 0;
 	int32 RoundCountDown = 0;
 	FTimerHandle GameRoundTimerHandle;
@@ -88,4 +94,7 @@ private:
 	void StartRespawn(AController* Controller);
 
 	void GameOver();
+
+	void SetMatchState(EMatchState NewState);
+	
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HomeworkTypes.h"
 
 #include "GameFramework/PlayerController.h"
 #include "BaseCharacterPlayerController.generated.h"
@@ -21,15 +22,17 @@ public:
 
 	ABaseCharacterPlayerController();
 	
-	virtual void OnPossess(APawn* InPawn) override;
+
 	URespawnComponent* GetRespawnComponent() const { return RespawnComponent; }
 
 protected:
 
 	virtual void SetupInputComponent() override;
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void BeginPlay() override;
 
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = "Widget")
-	TSubclassOf<UPlayerHUDWidget> PlayerHudWidgetClass;
+	TSubclassOf<class UGameHUDWidget> GameHUDWidgetClass;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	URespawnComponent* RespawnComponent;
@@ -78,9 +81,9 @@ private:
 
 	void PrimaryMeleeAttack();
 	void SecondaryMeleeAttack();
+
+	void OnPauseGame();
 	TWeakObjectPtr< ABaseCharacter> CachedBaseCharacter;
 
-	UPlayerHUDWidget* PlayerHUDWidget;
-
-	void CreateAndInitializeWidget();
+	void OnMatchStateChanged(EMatchState MatchState);
 };

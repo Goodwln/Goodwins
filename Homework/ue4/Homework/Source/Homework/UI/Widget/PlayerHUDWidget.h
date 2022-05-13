@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "BaseUserWidget.h"
 #include "Characters/BaseCharacter.h"
 #include "PlayerHUDWidget.generated.h"
 
@@ -14,19 +14,18 @@ class UWidgetCharacterAttributes;
 class USpectatorWidget;
 class UThrowableWidget;
 class URoundInfoWidget;
-	DECLARE_MULTICAST_DELEGATE_OneParam(FOnUpdateKillStatsInfoEventSignature, int32 )
-	DECLARE_MULTICAST_DELEGATE_OneParam(FOnUpdateDeathStatsInfoEventSignature, int32 )
-	DECLARE_MULTICAST_DELEGATE_OneParam(FOnUpdateTimeRoundStatsInfoEventSignature, int32 )
-	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnUpdateRoundInfoEventSignature, int32, int32 )
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnUpdateKillStatsInfoEventSignature, int32)
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnUpdateDeathStatsInfoEventSignature, int32)
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnUpdateTimeRoundStatsInfoEventSignature, int32)
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnUpdateRoundInfoEventSignature, int32, int32)
 
 UCLASS()
-class HOMEWORK_API UPlayerHUDWidget : public UUserWidget
+class HOMEWORK_API UPlayerHUDWidget : public UBaseUserWidget
 {
 	GENERATED_BODY()
 
 public:
-
-		virtual bool Initialize() override;
+	virtual bool Initialize() override;
 	void InitReticleWidget(ABaseCharacter* Character);
 	void InitAmmoWidget(ABaseCharacter* Character);
 	void InitStaminaWidget(ABaseCharacter* Character);
@@ -35,63 +34,65 @@ public:
 	void InitThrowableWidget(ABaseCharacter* Character);
 	void InitRoundInfoWidget();
 	void InitSpectatorWidget();
-	void CreateAndInitializeWidget(APawn* PawnOwner, AController* Controller);
-		
-		class UReticleWidget* GetReticleWidget();
+ 
+	virtual void InitializeWidget() override;
 
-		class UAmmoWidget* GetAmmoWidget();
+	class UReticleWidget* GetReticleWidget();
 
-		UWidgetCharacterAttributes* GetStaminaAttributeWidget();
+	class UAmmoWidget* GetAmmoWidget();
 
-		UWidgetCharacterAttributes* GetOxygenAttributeWidget();
+	UWidgetCharacterAttributes* GetStaminaAttributeWidget();
 
-		UWidgetCharacterAttributes* GetHealthAttributeWidget();
-	
-		  UThrowableWidget* GetThrowableWidget();
+	UWidgetCharacterAttributes* GetOxygenAttributeWidget();
 
-		URoundInfoWidget* GetRoundInfoWidget();
+	UWidgetCharacterAttributes* GetHealthAttributeWidget();
 
-		USpectatorWidget* GetTimeRespawnInfoWidget();
+	UThrowableWidget* GetThrowableWidget();
+
+	URoundInfoWidget* GetRoundInfoWidget();
+
+	USpectatorWidget* GetTimeRespawnInfoWidget();
+
+	 
 
 protected:
-	
-	
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName ReticleWidgetName = "Reticle";
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName ReticleWidgetName = "Reticle";
 
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName AmmoWidgetName = "WBP_Ammo";
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName AmmoWidgetName = "WBP_Ammo";
 
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName StaminaAttributeWidgetName = "StaminaAttribute";
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName StaminaAttributeWidgetName = "StaminaAttribute";
 
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName OxygenAttributeWidgetName = "OxygenAttribute";
-	
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName HealthAttributeWidgetName = "HealthAttribute";
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName OxygenAttributeWidgetName = "OxygenAttribute";
 
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName ThrowableWidgetName = "HealthAttribute";
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName HealthAttributeWidgetName = "HealthAttribute";
 
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName RoundInfoWidgetName = "PlayerRoundInfo";
-		
-		UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names");
-		FName TimeRespawnInfoWidgetName = "TimeRespawnInfo";
-	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName ThrowableWidgetName = "HealthAttribute";
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName RoundInfoWidgetName = "PlayerRoundInfo";
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget names")
+	FName TimeRespawnInfoWidgetName = "TimeRespawnInfo";
+
 private:
-		UPROPERTY()
-		AController* CacheController;
-		
-		UFUNCTION()
-		void UpdatePlayerStats(AController*  KillerController, AController* VictimController, int32 Kills, int32 Deaths);
+	UPROPERTY()
+	AController* CacheController;
 
-		UFUNCTION()
-		void WasSpectatorMode(bool IsVisibility);
-		
-		FOnUpdateKillStatsInfoEventSignature OnUpdateKillStatsInfoEvent;
-		FOnUpdateDeathStatsInfoEventSignature OnUpdateDeathStatsInfoEvent;
+	UFUNCTION()
+	void UpdatePlayerStats(AController* KillerController, AController* VictimController, int32 Kills, int32 Deaths);
 
-		void OnNewPawn(APawn* NewPawn);
+	UFUNCTION()
+	void WasSpectatorMode(bool IsVisibility);
+
+	FOnUpdateKillStatsInfoEventSignature OnUpdateKillStatsInfoEvent;
+	FOnUpdateDeathStatsInfoEventSignature OnUpdateDeathStatsInfoEvent;
+
+	void OnNewPawn(APawn* NewPawn);
+
 };

@@ -5,12 +5,10 @@
 
 #include "AIController.h"
 #include "EngineUtils.h"
-#include "Actors/DeadPlayer/DeadPlayer.h"
-#include "AI/AICharacter.h"
-#include "Characters/BaseCharacter.h"
+ #include "Actors/DeadPlayer/DeadPlayer.h"
+ #include "Characters/BaseCharacter.h"
 #include "Characters/Controllers/BaseCharacterPlayerController.h"
-#include "Components/CharacterComponents/AIPatrollingComponent.h"
-#include "Components/CharacterComponents/RespawnComponent.h"
+ #include "Components/CharacterComponents/RespawnComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "PlayerState/HWPlayerState.h"
 
@@ -39,12 +37,40 @@ void AGameModeLearning::StartPlay()
 {
 	Super::StartPlay();
 
+
+	// UE_LOG(LogGameModeLearning, Display,TEXT("%s"), *GetWorld()->GetGameInstance<ULearningGameInstance>()->TestString);
 	SpawnBots();
 	CreateTeamsInfo();
 	
 	OnRoundTimeEvent.Broadcast(GameData.RoundTime);
 	CurrentRound = 1;
 	StartRound();
+
+	SetMatchState(EMatchState::InProgress);
+}
+
+bool AGameModeLearning::SetPause(APlayerController* PC, FCanUnpause CanUnpauseDelegate)
+{
+	const bool bMatchState = Super::SetPause(PC, CanUnpauseDelegate);
+
+	if(bMatchState)
+	{
+		SetMatchState(EMatchState::Pause);
+	}
+	
+	return bMatchState;
+}
+
+bool AGameModeLearning::ClearPause()
+{
+	const bool bClearPause = Super::ClearPause();
+	
+	if(bClearPause)
+	{
+		SetMatchState(EMatchState::InProgress);
+	}
+	
+	return bClearPause;
 }
 
 void AGameModeLearning::SpawnBots()
@@ -166,6 +192,7 @@ void AGameModeLearning::CreateTeamsInfo()
 
 		PlayerState->SetTeamID(TeamID);
 		PlayerState->SetTeamColor(DetermineColorByTeamID(TeamID));
+		PlayerState->SetPlayerName(Controller->IsPlayerController() ? "Player" : "Bot");
 		SetPlayerColor(Controller);
 		TeamID = TeamID == 1 ? 2 : 1;
 	}
@@ -279,5 +306,18 @@ void AGameModeLearning::GameOver()
 		Pawn->TurnOff();
 		Pawn->DisableInput(nullptr);
 	}
+
+	SetMatchState(EMatchState::GameOver);
+}
+
+void AGameModeLearning::SetMatchState(EMatchState NewState)
+{
+	if(MatchState == NewState)
+	{
+		return;
+	}
+	MatchState = NewState;
+	OnMatchStateChangedEvent.Broadcast(MatchState);
+	
 }
 

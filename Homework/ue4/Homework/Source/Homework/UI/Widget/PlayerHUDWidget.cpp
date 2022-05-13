@@ -16,13 +16,13 @@
 #include "UI/Widget/WidgetCharacterAttributes.h"
 
 
-void UPlayerHUDWidget::CreateAndInitializeWidget(APawn* PawnOwner, AController* Controller)
+DEFINE_LOG_CATEGORY_STATIC(LogPlayerHUDWidget, All, All);
+
+void UPlayerHUDWidget::InitializeWidget()
 {
-	CacheController = Controller;
-	
-	if (IsValid(PawnOwner))
-	{
-		ABaseCharacter* Character = Cast<ABaseCharacter>(PawnOwner);
+	CacheController = GetOwningPlayer();
+
+		ABaseCharacter* Character = Cast<ABaseCharacter>(GetOwningPlayerPawn());
 		if (IsValid(Character))
 		{
 			InitReticleWidget(Character);
@@ -34,12 +34,11 @@ void UPlayerHUDWidget::CreateAndInitializeWidget(APawn* PawnOwner, AController* 
 			InitRoundInfoWidget();
 			InitSpectatorWidget();
 		}
-	}
 }
 
 void UPlayerHUDWidget::WasSpectatorMode(bool IsVisibility)
 {
-	ESlateVisibility CurrentVisibility = !IsVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+	const ESlateVisibility CurrentVisibility = !IsVisibility ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
 	
 	GetReticleWidget()->SetVisibility(CurrentVisibility);
 	GetAmmoWidget()->SetVisibility(CurrentVisibility);
@@ -52,7 +51,7 @@ void UPlayerHUDWidget::WasSpectatorMode(bool IsVisibility)
 
 void UPlayerHUDWidget::OnNewPawn(APawn* NewPawn)
 {
-	CreateAndInitializeWidget( NewPawn, GetOwningPlayer());
+	InitializeWidget();
 }
 
 bool UPlayerHUDWidget::Initialize()
@@ -211,7 +210,7 @@ void UPlayerHUDWidget::InitRoundInfoWidget()
 			AGameModeLearning* GameMode = Cast<AGameModeLearning>(GetWorld()->GetAuthGameMode());
 			if (IsValid(GameMode))
 			{
-				GameMode->OnStatsPlayerEvent.AddUFunction(this, FName("UpdatePlayerStats"));
+ 				GameMode->OnStatsPlayerEvent.AddUFunction(this, FName("UpdatePlayerStats"));
 				OnUpdateDeathStatsInfoEvent.AddUFunction(RoundInfoWidget, FName("DeathsInfo"));
 				OnUpdateKillStatsInfoEvent.AddUFunction(RoundInfoWidget, FName("KillsInfo"));
 
@@ -227,18 +226,19 @@ void UPlayerHUDWidget::InitSpectatorWidget()
 	USpectatorWidget* SpectatorWidget = GetTimeRespawnInfoWidget();
 	if (IsValid(SpectatorWidget))
 	{
-		ABaseCharacterPlayerController* PlayerController = Cast<
-			ABaseCharacterPlayerController>(CacheController);
+		const ABaseCharacterPlayerController* PlayerController = Cast<ABaseCharacterPlayerController>(GetOwningPlayer());
 		if (IsValid(PlayerController))
 		{
 			URespawnComponent* RespawnComponent = PlayerController->GetRespawnComponent();
 			if (IsValid(RespawnComponent))
 			{
 				RespawnComponent->OnTimerToRespawnEvent.AddUFunction(SpectatorWidget, FName("TimeRespawnInfo"));
-				RespawnComponent->OnActivatedSpectatorModeEvent.AddUFunction(
-					SpectatorWidget, FName("VisibilityWidget"));
+				RespawnComponent->OnActivatedSpectatorModeEvent.AddUFunction(SpectatorWidget, FName("VisibilityWidget"));
 				SpectatorWidget->OnVisibilitySpectatorWidgetEvent.AddUFunction(this, FName("WasSpectatorMode"));
 			}
 		}
 	}
 }
+ 
+
+ 

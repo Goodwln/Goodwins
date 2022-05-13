@@ -37,6 +37,24 @@ void ABaseProjectile::SetProjectileActive_Implementation(bool bIsProjectileActiv
 	ProjectileMovementComponent->SetActive(bIsProjectileActive);
 }
 
+void ABaseProjectile::ProjectileDisable(FVector Loctation, FRotator Rotation, float TimerDisable)
+{
+	 SetProjectileActive(false);
+	 SetActorEnableCollision(false);
+	
+	 OnProjectileHit.RemoveAll(this);
+ 
+	GetWorld()->GetTimerManager().SetTimer(
+		TimeDetonation,
+		[&]()
+		{
+			SetActorLocation(Loctation);
+			SetActorRotation(Rotation);
+ 		},			
+		TimerDisable,
+		false); 
+}
+
 float ABaseProjectile::GetTimerDetonation()
 {
 	return 0.f;

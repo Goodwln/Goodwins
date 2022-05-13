@@ -10,6 +10,7 @@ UBTTaskNode_LaunchThrowable::UBTTaskNode_LaunchThrowable()
 {
 	NodeName = "Launch Throwable";
 }
+ 
 
 EBTNodeResult::Type UBTTaskNode_LaunchThrowable::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
@@ -34,9 +35,13 @@ EBTNodeResult::Type UBTTaskNode_LaunchThrowable::ExecuteTask(UBehaviorTreeCompon
 
 	GetWorld()->GetTimerManager().SetTimer(
 		IntervalAfterLaunch,
-		[this]()
+		[this, Controller]()
 		{
-			GetWorld()->GetTimerManager().ClearTimer(IntervalAfterLaunch);
+			if(IsValid(Controller->GetPawn()))
+			{
+				GetWorld()->GetTimerManager().ClearTimer(IntervalAfterLaunch);
+			}
+			
 		},
 		TimeAfterLaunch,
 		false);

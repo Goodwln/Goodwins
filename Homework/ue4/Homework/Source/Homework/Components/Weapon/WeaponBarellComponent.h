@@ -76,7 +76,9 @@ struct FWeaponBarrelProperty
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barell attributes | Damage")
 	TSubclassOf< UDamageType> DamageTypeClass;
- 
+
+	UPROPERTY()
+	TArray<ABaseProjectile*> ProjectilePool;
 };
 
 USTRUCT()
@@ -100,17 +102,7 @@ struct FReplicationShotInfo
 	FVector GetDirection() const { return Direction; }
 	float GetSpreadAngle() const { return  SpreadAngle; }
 };
-
-USTRUCT()
-struct FInnerArrayProjectilePool
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TArray<ABaseProjectile*> ProjectilePool;
-	
-};
-
+ 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class HOMEWORK_API UWeaponBarellComponent : public USceneComponent
 {
@@ -154,16 +146,15 @@ private:
 	UFUNCTION()
 	void ProcessProjectileHit(ABaseProjectile* Projectile, const FHitResult& HitResult, const FVector& Direction);
 
-	UPROPERTY(Replicated )
+	UPROPERTY()
 	FWeaponBarrelProperty CurrentWeaponBarrelProperty;
-	UPROPERTY(Replicated)
+	UPROPERTY()
 	EWeaponMode CurrentWeaponMode;
 	
 	UPROPERTY()
 	int32 CurrentProjectileIndex;
-	UPROPERTY()
-	TArray<FInnerArrayProjectilePool> WeaponModeProjectilesPool;
 	
+ 	TArray<ABaseProjectile*> ProjectilePoolOnDisable;
 	FVector GetBulletSpreadOffset(float Angle, FRotator ShotRotation) const;
 
 	APawn* GetPawnOwner() const;
@@ -179,8 +170,7 @@ private:
 	void ProjectileScan(FVector& ShotStart, FVector& ShotDirection);
 
 	FVector StartShot = FVector::ZeroVector;
-
-	FTimerHandle TimeDetonation;
+	
 	
 };
 

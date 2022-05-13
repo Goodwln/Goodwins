@@ -18,4 +18,9 @@ public:
 
 		return IsValid(FirstPlayerState) && IsValid(SecondPlayerState) && FirstPlayerState->GetTeamID() != SecondPlayerState->GetTeamID() && !SecondPlayerState->IsDead();
 	}
+
+	static FText TextFromInt(int32 Number)
+	{
+		return FText::FromString(FString::FromInt(Number));
+	}
 };

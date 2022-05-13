@@ -117,3 +117,13 @@ enum class ETeams : uint8
 	Enemy
 };
 
+UENUM(BlueprintType)
+enum class EMatchState :uint8
+{
+	WaitingToStart,
+	InProgress,
+	Pause,
+	GameOver
+};
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMatchStateChangedEventSignature, EMatchState);

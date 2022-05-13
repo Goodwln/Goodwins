@@ -13,6 +13,9 @@
 #include "Homework/Components/DetectorComponents/FloorDetectorComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogBaseCharacterMovementComponent, All, All);
+
+
 UBaseCharacterMovementComponent::UBaseCharacterMovementComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -899,8 +902,11 @@ void UBaseCharacterMovementComponent::PhysWallRun(float DeltaTime, int32 Iterati
 void UBaseCharacterMovementComponent::StartSlide(FSlideParameters& OutSlideParameters)
 {
 	SlideParameters = OutSlideParameters;
+
+	UE_LOG(LogBaseCharacterMovementComponent, Display, TEXT("StartSlide"));
+ 
 	bIsSliding = true;
-  
+ 
 	SetIsSlideBeginningOfTheEnd(false);
 	
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetCapsuleHalfHeight(GetCurrentCapsuleSize(ECurrentCapsuleSize::SlideCapsule).HalfHeight);
@@ -916,32 +922,33 @@ void UBaseCharacterMovementComponent::StartSlide(FSlideParameters& OutSlideParam
 	{
 		GetWorld()->GetTimerManager().SetTimer(SlidingTimer, this, &UBaseCharacterMovementComponent::TimerToEndSlide, SlideMaxTime, false, SlideMaxTime);
 	}
-
-	SetMovementMode(MOVE_Custom, (uint8)ECustomMovementMode::CMOVE_Slide);
 	FRotator NewRotation = GetBaseCharacterOwner()->GetCapsuleComponent()->GetComponentRotation();
 	NewRotation.Pitch -= SlideParameters.Angle;
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetWorldRotation(NewRotation);
+	SetMovementMode(MOVE_Custom, (uint8)ECustomMovementMode::CMOVE_Slide);
+	 
+	
 }
 
 void UBaseCharacterMovementComponent::StopSlide()
 {
+	UE_LOG(LogBaseCharacterMovementComponent, Display, TEXT("StopSlide"));
 
 	GetWorld()->GetTimerManager().ClearTimer(SlidingTimer);
 	bIsSliding = false;
 	SetIsSlideBeginningOfTheEnd(false);
-
 	
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetCapsuleHalfHeight(GetCurrentCapsuleSize(ECurrentCapsuleSize::DefaultCapsule).HalfHeight);
 	GetBaseCharacterOwner()->GetCapsuleComponent()->SetCapsuleRadius(GetCurrentCapsuleSize(ECurrentCapsuleSize::DefaultCapsule).Radius);
-	
+	GetBaseCharacterOwner()->GetCapsuleComponent()->SetWorldRotation(FRotator::ZeroRotator);
 	if(bIsEndSlideChangeOnCrouch)
 	{
 		SetMovementMode(MOVE_Walking);
 		Crouch();
 		return;
 	}
-	float CapsuleLocationOffset = 0;
-	CapsuleLocationOffset = GetCurrentCapsuleSize(ECurrentCapsuleSize::DefaultCapsule).HalfHeight - GetCurrentCapsuleSize(ECurrentCapsuleSize::SlideCapsule).HalfHeight;
+ 
+	float CapsuleLocationOffset = GetCurrentCapsuleSize(ECurrentCapsuleSize::DefaultCapsule).HalfHeight - GetCurrentCapsuleSize(ECurrentCapsuleSize::SlideCapsule).HalfHeight;
 	FVector NewCapsuleLocation = GetBaseCharacterOwner()->GetActorLocation();
 	NewCapsuleLocation.Z += CapsuleLocationOffset;
 	
@@ -1007,7 +1014,7 @@ void UBaseCharacterMovementComponent::PhysSlide(float deltaTime, int32 Ite1ratio
 	bIsEndSlideChangeOnCrouch = GetBaseCharacterOwner()->GetFloorDetectorComponent()->DetectСeiling();
 	
 	FHitResult Hit;
-	SafeMoveUpdatedComponent(Delta, FRotator(0, GetOwner()->GetActorRotation().Yaw, 0), true, Hit);
+	SafeMoveUpdatedComponent(Delta, GetOwner()->GetActorRotation(), true, Hit);
 
 	SlideAlongSurface(Delta,1.f - Hit.Time, Hit.ImpactNormal, Hit, false);
 }
