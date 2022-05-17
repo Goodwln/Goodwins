@@ -34,17 +34,12 @@ EBTNodeResult::Type UBTTaskNode_LaunchThrowable::ExecuteTask(UBehaviorTreeCompon
 	Character->EquipPrimaryItem();
 
 	GetWorld()->GetTimerManager().SetTimer(
-		IntervalAfterLaunch,
-		[this, Controller]()
-		{
-			if(IsValid(Controller->GetPawn()))
-			{
-				GetWorld()->GetTimerManager().ClearTimer(IntervalAfterLaunch);
-			}
-			
-		},
-		TimeAfterLaunch,
-		false);
+		IntervalAfterLaunch, this, &UBTTaskNode_LaunchThrowable::OnTimerAfterLaunchThrowableItem, TimeAfterLaunch,false);
 	
 	return EBTNodeResult::Succeeded;
+}
+
+void UBTTaskNode_LaunchThrowable::OnTimerAfterLaunchThrowableItem()
+{
+	GetWorld()->GetTimerManager().ClearTimer(IntervalAfterLaunch);
 }

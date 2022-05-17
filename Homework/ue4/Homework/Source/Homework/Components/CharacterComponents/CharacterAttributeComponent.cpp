@@ -102,7 +102,7 @@ void UCharacterAttributeComponent::UpdateOxygenValue(float DeltaTime)
 	{
 		CurrentOxygen = FMath::Clamp(CurrentOxygen + OxygenRestoreVelocity * DeltaTime, 0.f, MaxOxygen);
 	}
-	
+					
 	if(GetIsActiveOxygen())
 	{
 		CurrentOxygen = FMath::Clamp(CurrentOxygen - SwimOxygenConsumptionVelocity * DeltaTime, 0.f, MaxOxygen);

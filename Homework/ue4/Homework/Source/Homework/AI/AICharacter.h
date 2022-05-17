@@ -11,6 +11,8 @@
  */
 class UBehaviorTree;
 class UAIPatrollingComponent;
+class UWidgetComponent;
+
 UCLASS(Blueprintable)
 class HOMEWORK_API AAICharacter : public ABaseCharacter
 {
@@ -22,12 +24,27 @@ public:
 	UBehaviorTree* GetBehaviorTree() const;
 
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UBehaviorTree* BehaviorTree;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UWidgetComponent* HealthWidgetComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	float HealthVisibilityDistance = 1000.f;
+
+	
 	UFUNCTION()
-	void TakeAnyDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType,
-					class AController* InstigatedBy, AActor* DamageCauser);
+	void TakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+					 AController* InstigatedBy, AActor* DamageCauser);
+
+	virtual void OnChangeHealth(float Current, float Max, FDefaultAttributeProperty Attribute) override;
+	
+private:
+	void UpdateHealthWidgetVisibility();
+
+	
 };

@@ -24,4 +24,6 @@ private:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
 	FTimerHandle IntervalAfterLaunch;
+
+	void OnTimerAfterLaunchThrowableItem();
 };

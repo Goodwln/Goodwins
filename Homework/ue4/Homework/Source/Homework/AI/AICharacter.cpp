@@ -2,14 +2,19 @@
 
 
 #include "AICharacter.h"
-
-#include "Characters/BaseCharacterMovementComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Perception/AISense_Damage.h"
+#include "UI/Widget/HealthBarWidget.h"
 
 AAICharacter::AAICharacter(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
 	AutoPossessAI = EAutoPossessAI::Disabled;
+
+	HealthWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthWidgetComponent->SetupAttachment(GetRootComponent());
+	HealthWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	HealthWidgetComponent->SetDrawAtDesiredSize(true);
 }
 
 UBehaviorTree* AAICharacter::GetBehaviorTree() const
@@ -24,6 +29,11 @@ void AAICharacter::BeginPlay()
  
 }
 
+void AAICharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	UpdateHealthWidgetVisibility();
+}
 
 
 void AAICharacter::TakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
@@ -36,4 +46,29 @@ void AAICharacter::TakeAnyDamage(AActor* DamagedActor, float Damage, const UDama
 		Damage,
 		DamageCauser->GetActorLocation(),
 		DamagedActor->GetActorLocation());
+}
+
+void AAICharacter::OnChangeHealth(float Current, float Max, FDefaultAttributeProperty Attribute)
+{
+	Super::OnChangeHealth(Current, Max, Attribute);
+
+	UHealthBarWidget* HealthBarWidget = Cast<UHealthBarWidget>(HealthWidgetComponent->GetUserWidgetObject());
+	if(IsValid(HealthBarWidget))
+	{
+		HealthBarWidget->SetHealthPercent(Current / Max);
+	}
+}
+
+void AAICharacter::UpdateHealthWidgetVisibility()
+{
+	if(!IsValid(GetWorld()) ||										//
+	   !IsValid(GetWorld()->GetFirstPlayerController()) ||			//
+	   !IsValid(GetWorld()->GetFirstPlayerController()->GetPawn()))	
+	{
+		return;
+	}
+	
+	const FVector PlayerLocation = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
+	const float Distance = FVector::Distance(PlayerLocation, GetActorLocation());
+	HealthWidgetComponent->SetVisibility(Distance < HealthVisibilityDistance, true);;
 }

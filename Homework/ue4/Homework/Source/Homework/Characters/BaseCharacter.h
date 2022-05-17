@@ -247,13 +247,16 @@ protected:
 	ETeams Team = ETeams::Player;
 	 
 	virtual void Reset() override;
+
+	
+	virtual void OnChangeOxygen(float Current, float Max, FDefaultAttributeProperty Attribute);
+	virtual void OnChangeStamina(float Current, float Max, FDefaultAttributeProperty Attribute);
+	virtual void OnChangeHealth(float Current, float Max, FDefaultAttributeProperty Attribute);
+	
 private:
 	void TryChangeSprintState(float DeltaSeconds);
 	void PerDamage();
 
-	void OnChangeOxygen(float Current, float Max, FDefaultAttributeProperty Attribute);
-	void OnChangeStamina(float Current, float Max, FDefaultAttributeProperty Attribute);
-	void OnChangeHealth(float Current, float Max, FDefaultAttributeProperty Attribute);
 	
 	TArray<AInteractiveActor*> AvailableInteractiveActors;
 

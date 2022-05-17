@@ -30,16 +30,19 @@ void UBTService_Fire::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMem
 	if(!IsValid(RangeWeapon)) return;
 	
 	const AActor* CurrentTarget = Cast<AActor>(BlackboardComponent->GetValueAsObject(BB_CurrentTarget));
-	if(IsValid(CurrentTarget))
-	{
-		const float DistanceSquare = FVector::DistSquared(CurrentTarget->GetActorLocation(), Character->GetActorLocation());
-		if(DistanceSquare > FMath::Square(MaxFireDistance))
-		{
-			Character->StopFire();
-			return;
-		}
-	}
 	
+	if(!IsValid(CurrentTarget))
+	{
+		return;
+	}
+
+	const float DistanceSquare = FVector::DistSquared(CurrentTarget->GetActorLocation(), Character->GetActorLocation());
+	if (DistanceSquare > FMath::Square(MaxFireDistance))
+	{
+		Character->StopFire();
+		return;
+	}
+		
 	if(!RangeWeapon->IsReloading() || RangeWeapon->IsFiring())
 	{
 		Character->StartFire();

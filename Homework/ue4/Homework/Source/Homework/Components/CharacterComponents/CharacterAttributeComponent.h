@@ -102,8 +102,7 @@ private:
 
 	UPROPERTY( )
 	float CurrentHealth = 0.f;
- 
-
+	
 	void OnHealthChanged(AController* KillerController);
 	
 	float CurrentStamina = 0.f;

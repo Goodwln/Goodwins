@@ -23,14 +23,18 @@ void UBTService_SearchTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8*
 
 	ABaseAIController* Controller = Cast<ABaseAIController>(OwnerComp.GetAIOwner());
 	UBlackboardComponent* Blackboard = Controller->GetBlackboardComponent();
-	if(!IsValid(Controller) || !IsValid(Blackboard)) return;
+	if(!IsValid(Controller) || !IsValid(Blackboard))
+	{
+		return;
+	}
+	
 	AActor* Actor = Controller->GetClosestSensedActor(UAISense_Damage::StaticClass());
 
 	Actor = IsValid(Actor) ? Actor->GetOwner() : Controller->GetClosestSensedActor(UAISense_Sight::StaticClass());
 	
 	if(!IsValid(Actor))
 	{
-		Controller->ClearFocus(EAIFocusPriority::Gameplay);
+		 Controller->ClearFocus(EAIFocusPriority::Gameplay);
 		Blackboard->SetValueAsObject(BB_CurrentTarget, Actor);
 		return;
 	}
